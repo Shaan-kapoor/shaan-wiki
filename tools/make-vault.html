@@ -2,7 +2,7 @@
 <html lang="en">
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>shaan.wiki — make vault.json</title>
+<title>shaan.wiki, make vault.json</title>
 <style>
   body { max-width: 620px; margin: 0 auto; padding: 40px 20px 80px;
          background: #fff; color: #000;
@@ -31,7 +31,7 @@
 
 <p class="note">
   This encrypts your GitHub token with your password so it can be committed to
-  a public repo safely. Everything happens in this page — nothing is uploaded,
+  a public repo safely. Everything happens in this page, nothing is uploaded,
   and the token never leaves your machine. Open this file locally, not from
   the live site.
 </p>
@@ -39,7 +39,7 @@
 <div class="warn">
   <b>The password is the only thing protecting the token.</b>
   The encrypted blob will be public, so a weak password can be cracked offline
-  at leisure. Use four random words — something like
+  at leisure. Use four random words, something like
   <code>rope-candle-vertigo-plum</code>. Not a password you use elsewhere.
 </div>
 
@@ -78,7 +78,7 @@ document.getElementById("go").addEventListener("click", async function () {
     if (!confirm("That password is short and the blob will be public. Continue?"))
       return;
   }
-  out.value = "Deriving key (600,000 iterations — a few seconds)…";
+  out.value = "Deriving key (600,000 iterations, a few seconds)…";
 
   var enc = new TextEncoder();
   var salt = crypto.getRandomValues(new Uint8Array(16));

@@ -5,7 +5,7 @@ A one-year writing machine with a death clock on it.
 From **1 August 2026** to **31 July 2027**, one entry a day and one gym tick a day.
 Each day's entry is editable until midnight IST, then sealed forever. Missed days stay missed.
 
-The domain expires on **30 July 2027 at 01:18 IST** — day 364 of 365. The year cannot be
+The domain expires on **30 July 2027 at 01:18 IST**, day 364 of 365. The year cannot be
 finished without renewing.
 
 Design notes, decisions and open questions live in [idea.md](idea.md).
@@ -22,7 +22,7 @@ build/build.py          no dependencies. Renders everything
 public/                 static HTML. Deployed to GitHub Pages by Actions
 ```
 
-Everything on the site — the index, the grids, streaks, word counts, backlinks — is **derived**.
+Everything on the site, the index, the grids, streaks, word counts, backlinks, is **derived**.
 Delete `public/` and it rebuilds identically. Delete the whole site and `entries/` rebuilds it.
 That is why the archive is text files and not a database.
 
@@ -42,7 +42,7 @@ from git history.
 
 ## Setup, once
 
-### 1. DNS — the only thing blocking the site going live
+### 1. DNS, the only thing blocking the site going live
 
 `shaan.wiki` is still on Spaceship's parking nameservers. Until it points at GitHub, the site is
 unreachable: this account's Pages sites all redirect to `shaankapoor.me` (set as the custom domain
@@ -73,7 +73,7 @@ is issued (a few minutes).
 
 1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**.
    Repository access: only this repo. Permissions: `Contents: Read and write`, nothing else.
-   Expiry: the maximum, 366 days — one day longer than the domain, so it never needs rotating.
+   Expiry: the maximum, 366 days, one day longer than the domain, so it never needs rotating.
 2. Open `tools/make-vault.html` **locally** in a browser. Paste the token and a password.
 3. Save the output as `data/vault.json` and commit it.
 
@@ -91,7 +91,7 @@ Python 3.8+. No dependencies, no npm, no lockfile, nothing to update.
 
 - One entry per day. The filename is the date, so this is structural.
 - Editable until 00:00 IST. Then never.
-- No backfilling — the endpoint only ever writes today's date.
+- No backfilling, the endpoint only ever writes today's date.
 - Black and white only.
 - No JavaScript required to read anything.
 - The only animation on the site is the intro, and its purpose is to stop.

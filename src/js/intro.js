@@ -1,50 +1,38 @@
-/* shaan.wiki intro — a generative field that blooms, breathes, and settles.
+/* shaan.wiki intro: order assembling itself out of scatter, then settling.
  *
- * Three references, pulling different ways:
+ * Generative rather than choreographed, after The Way of Code: a noise field
+ * and a pointer force produce the motion, so it is never the same twice. The
+ * form is a dot matrix, which is the same lattice as the year grid, so this
+ * reads as the grid arriving rather than as decoration. And it ends, which is
+ * the whole point: after this nothing on the site moves again.
  *
- *   The Way of Code   generative rather than choreographed. There are no
- *                     keyframes here — a noise field and a pointer force
- *                     produce the motion, so it is never the same twice.
- *                     Slow, elemental, reshapes under the cursor.
- *   Nothing           the form is a dot matrix. Same lattice as the year grid,
- *                     so this is the grid assembling itself, not decoration.
- *   Tetragrammaton    it ends. Motion whose whole purpose is to resolve into
- *                     stillness — after ~4s nothing on this site ever moves again.
- *
- * ~3 KB, no library, black and white, one canvas.
- * No JS, reduced motion, or a second visit: never runs.
+ * Every dot starts somewhere random and finds its place. Runs on every load,
+ * so it is kept short.
  */
 (function () {
   "use strict";
 
   if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-  try {
-    if (sessionStorage.getItem("shaan.wiki:seen")) return;
-    sessionStorage.setItem("shaan.wiki:seen", "1");
-  } catch (e) { /* private mode — just play it */ }
 
-  var N = 17;               // lattice is N x N
-  var LIFE = 4200;          // ms until everything is still
-  var BLOOM = 1500;         // ms for the wave to reach the far corner
+  var N = 19;
+  var GATHER = 1500;   // ms for the scatter to resolve into the lattice
+  var LIFE = 2700;     // ms until it is gone
 
   var overlay = document.createElement("div");
   overlay.className = "intro";
   overlay.setAttribute("aria-hidden", "true");
-
-  // One child only. The overlay is a centring grid, so a second element
-  // would become a second row and knock the field off centre.
   var canvas = document.createElement("canvas");
   canvas.className = "intro-canvas";
   overlay.appendChild(canvas);
   document.body.appendChild(overlay);
 
   var ctx = canvas.getContext("2d");
-  var ink = getComputedStyle(document.body).color || "#000";
+  var ink = getComputedStyle(document.body).color || "#fff";
   var size = 0, dpr = Math.min(window.devicePixelRatio || 1, 2);
   var pointer = { x: -999, y: -999, on: false };
 
   function resize() {
-    size = Math.min(window.innerWidth * 0.72, window.innerHeight * 0.62, 420);
+    size = Math.min(window.innerWidth * 0.74, window.innerHeight * 0.6, 440);
     canvas.width = size * dpr;
     canvas.height = size * dpr;
     canvas.style.width = size + "px";
@@ -54,18 +42,21 @@
   resize();
   window.addEventListener("resize", resize);
 
-  function movePointer(e) {
+  function move(e) {
     var r = canvas.getBoundingClientRect();
     var p = e.touches ? e.touches[0] : e;
     pointer.x = p.clientX - r.left;
     pointer.y = p.clientY - r.top;
     pointer.on = true;
   }
-  overlay.addEventListener("pointermove", movePointer);
-  overlay.addEventListener("touchmove", movePointer, { passive: true });
-  overlay.addEventListener("pointerleave", function () { pointer.on = false; });
+  overlay.addEventListener("pointermove", move);
+  overlay.addEventListener("touchmove", move, { passive: true });
 
-  // cheap, dependency-free organic noise — enough for slow drift
+  // deterministic scatter: each dot remembers where it came from
+  function rand(i) {
+    var x = Math.sin(i * 127.1 + 311.7) * 43758.5453;
+    return x - Math.floor(x);
+  }
   function noise(x, y, t) {
     return Math.sin(x * 0.72 + t) * Math.cos(y * 0.61 - t * 0.8) +
            0.5 * Math.sin((x + y) * 0.43 + t * 1.27);
@@ -73,60 +64,71 @@
 
   var mid = (N - 1) / 2;
   var maxd = Math.hypot(mid, mid);
-  var start = performance.now();
-  var raf;
+  var dots = [];
+  for (var iy = 0; iy < N; iy++) {
+    for (var ix = 0; ix < N; ix++) {
+      var d = Math.hypot(ix - mid, iy - mid);
+      if (d > maxd * 0.96) continue;
+      var i = iy * N + ix;
+      var ang = rand(i) * 6.2832;
+      var far = 0.55 + rand(i + 7919) * 0.9;
+      dots.push({
+        ix: ix, iy: iy, d: d,
+        // where it starts: flung out along a random bearing
+        ox: Math.cos(ang) * far, oy: Math.sin(ang) * far,
+        delay: (d / maxd) * 620 + rand(i + 104729) * 260
+      });
+    }
+  }
+
+  var start = performance.now(), raf;
 
   function frame(now) {
     var age = now - start;
     var t = age / 1000;
-    // everything decays to nothing by LIFE — the settling
-    var settle = age < LIFE - 900 ? 1 : Math.max(0, (LIFE - age) / 900);
+    var out = age < LIFE - 620 ? 1 : Math.max(0, (LIFE - age) / 620);
 
     ctx.clearRect(0, 0, size, size);
     var gap = size / (N + 1);
 
-    for (var iy = 0; iy < N; iy++) {
-      for (var ix = 0; ix < N; ix++) {
-        var d = Math.hypot(ix - mid, iy - mid);
-        if (d > maxd * 0.94) continue;
+    for (var k = 0; k < dots.length; k++) {
+      var p = dots[k];
+      var life = (age - p.delay) / GATHER;
+      if (life <= 0) continue;
+      life = Math.min(life, 1);
+      // decelerating arrival, no overshoot, nothing bounces
+      var ease = 1 - Math.pow(1 - life, 4);
 
-        // radial wave: each ring wakes a little after the one inside it
-        var wake = (d / maxd) * BLOOM;
-        if (age < wake) continue;
-        var life = Math.min((age - wake) / 620, 1);
-        var ease = 1 - Math.pow(1 - life, 3);
+      var hx = gap * (p.ix + 1);
+      var hy = gap * (p.iy + 1);
+      var px = hx + p.ox * size * (1 - ease);
+      var py = hy + p.oy * size * (1 - ease);
 
-        var bx = gap * (ix + 1);
-        var by = gap * (iy + 1);
+      // once home, the lattice breathes on the noise field
+      var drift = ease * gap * 0.3;
+      px += noise(p.ix * 0.5, p.iy * 0.5, t * 0.34) * drift;
+      py += noise(p.iy * 0.5, p.ix * 0.5, t * 0.31) * drift;
 
-        // organic drift
-        var n = noise(ix * 0.5, iy * 0.5, t * 0.35);
-        var px = bx + n * gap * 0.34 * ease;
-        var py = by + noise(iy * 0.5, ix * 0.5, t * 0.31) * gap * 0.34 * ease;
-
-        // the pointer pushes the field open
-        if (pointer.on) {
-          var dx = px - pointer.x, dy = py - pointer.y;
-          var pd = Math.hypot(dx, dy);
-          var reach = size * 0.28;
-          if (pd < reach && pd > 0.01) {
-            var force = (1 - pd / reach) * gap * 1.5;
-            px += (dx / pd) * force;
-            py += (dy / pd) * force;
-          }
+      if (pointer.on) {
+        var dx = px - pointer.x, dy = py - pointer.y;
+        var pd = Math.hypot(dx, dy);
+        var reach = size * 0.3;
+        if (pd < reach && pd > 0.01) {
+          var f = (1 - pd / reach) * gap * 1.7;
+          px += (dx / pd) * f;
+          py += (dy / pd) * f;
         }
-
-        // dots breathe, then shrink toward the quiet state
-        var breath = 0.62 + 0.38 * Math.sin(t * 1.1 - d * 0.42);
-        var r = gap * 0.19 * ease * (0.55 + 0.45 * breath) * settle;
-        if (r <= 0.1) continue;
-
-        ctx.globalAlpha = Math.min(1, ease) * settle * (0.28 + 0.72 * breath);
-        ctx.beginPath();
-        ctx.arc(px, py, r, 0, 6.2832);
-        ctx.fillStyle = ink;
-        ctx.fill();
       }
+
+      var breath = 0.6 + 0.4 * Math.sin(t * 1.15 - p.d * 0.4);
+      var r = gap * 0.2 * ease * (0.5 + 0.5 * breath) * out;
+      if (r <= 0.12) continue;
+
+      ctx.globalAlpha = ease * out * (0.3 + 0.7 * breath);
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, 6.2832);
+      ctx.fillStyle = ink;
+      ctx.fill();
     }
 
     if (age < LIFE) {
@@ -136,15 +138,12 @@
       setTimeout(function () {
         cancelAnimationFrame(raf);
         overlay.remove();
-      }, 700);
+      }, 620);
     }
   }
   raf = requestAnimationFrame(frame);
 
-  // any tap or key skips straight to the page
-  function skip() {
-    start -= LIFE;
-  }
+  function skip() { start -= LIFE; }
   overlay.addEventListener("click", skip);
   window.addEventListener("keydown", skip, { once: true });
 })();

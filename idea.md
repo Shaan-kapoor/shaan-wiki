@@ -1,4 +1,4 @@
-# idea.md — shaan.wiki
+# idea.md, shaan.wiki
 
 Living ideation doc. **[LOCKED]** = decided. **[OPEN]** = needs Shaan.
 
@@ -12,7 +12,7 @@ Last updated: 2026-07-31
 
 From 1 August 2026 to 31 July 2027, Shaan writes one thing a day and ticks whether he went to the
 gym. Each day's entry seals at midnight and becomes a permanent page. At the end the site is the
-archive of a year — 365 articles, 365 squares, and a number that counted down the whole time.
+archive of a year, 365 articles, 365 squares, and a number that counted down the whole time.
 
 The constraint isn't decoration. **The domain expires before the year is over.** See §3.
 
@@ -23,21 +23,20 @@ Domain          shaan.wiki
 Registrar       Spaceship, Inc.
 Registered      2026-07-29 19:48:39 UTC
 Expires         2027-07-29 19:48:39 UTC  =  2027-07-30 01:18:39 IST
-Nameservers     launch1/launch2.spaceship.net  (parked — nothing served yet)
+Nameservers     launch1/launch2.spaceship.net  (parked, nothing served yet)
 Repo            github.com/Shaan-kapoor/shaan-wiki  (private for now)
 
 Day 1           2026-08-01  (Saturday)
 Day 365         2027-07-31  (Saturday)
-Timezone        Asia/Kolkata, UTC+5:30, no DST — ever
+Timezone        Asia/Kolkata, UTC+5:30, no DST, ever
 Day boundary    00:00:00 IST to 23:59:59 IST
-Kindle          newest model — modern browser, no compatibility worries
+Kindle          newest model, modern browser, no compatibility worries
 ```
 
 ## 3. Two hard facts about the calendar
 
 **Fact one: Day 1 is tomorrow.** Today is 31 July. There is one day to get a working write path
-live, or Day 1 goes unrecorded under a no-backfill rule. See §10 for what that means in practice —
-the good news is that the architecture makes a tiny Day-1 version genuinely viable.
+live, or Day 1 goes unrecorded under a no-backfill rule. See §10 for what that means in practice, the good news is that the architecture makes a tiny Day-1 version genuinely viable.
 
 **Fact two: the domain dies on Day 364.**
 
@@ -50,7 +49,7 @@ the good news is that the architecture makes a tiny Day-1 version genuinely viab
 The writing year is 365 days from 1 August. The domain runs out roughly 34 hours before that year
 is finished. **You cannot complete the project without renewing.**
 
-That's not a bug to fix — it's the best thing that's happened to this idea. The countdown isn't
+That's not a bug to fix, it's the best thing that's happened to this idea. The countdown isn't
 decorative any more; on Day 364 it forces an actual decision, with 364 days of work sitting behind
 it. Three ways to handle it:
 
@@ -73,7 +72,7 @@ it. Three ways to handle it:
 | 6 | `shaan.wiki/<title>` | Title determines the URL |
 | 7 | Countdown to expiry | Real timestamp, on every page |
 | 8 | Gym tracker, binary tick | Gym only. No writing grid |
-| 9 | Public — anyone can read | Repo goes public |
+| 9 | Public, anyone can read | Repo goes public |
 | 10 | No backfilling | A missed day stays missed |
 | 11 | Mobile-first | The phone is the primary writing device |
 | 12 | Grid = full year, 53×7, `<table>` | GitHub's shape. See §8 |
@@ -103,27 +102,26 @@ This is the heart of the thing, so it's worth being exact.
 date, computed server-side in `Asia/Kolkata`. At midnight, yesterday stops being today and every
 write to it is refused. Nothing to run, nothing to break, nothing to forget.
 
-IST is UTC+5:30 with no daylight saving, so the arithmetic is a fixed offset — no timezone library,
+IST is UTC+5:30 with no daylight saving, so the arithmetic is a fixed offset, no timezone library,
 no edge cases twice a year.
 
 **The consequence worth naming:** a typo spotted on Wednesday about Tuesday's entry is permanent.
-That's the price of the entries meaning something, and it's the right trade — but there's a
+That's the price of the entries meaning something, and it's the right trade, but there's a
 wiki-native escape hatch if you want it:
 
-> **Addenda.** You can't edit a sealed entry, but you could append a dated note to it —
-> rendered as a separate block below the text, clearly marked as written later.
+> **Addenda.** You can't edit a sealed entry, but you could append a dated note to it, > rendered as a separate block below the text, clearly marked as written later.
 > The original stays untouched, corrections stay possible, and the archive stays honest.
 > This is exactly what a wiki talk page is for. **[OPEN Q2]**
 
 **One entry per day.** One file per day enforces it structurally, and it matches one square per
 day. If you'd ever want two on the same day, say so now, because it changes the file layout. **[OPEN Q3]**
 
-**The gym tick follows the same rule** — tick and untick freely all day, sealed at midnight.
+**The gym tick follows the same rule**, tick and untick freely all day, sealed at midnight.
 Forget to tap before bed and the day counts as a miss. Consistent with everything else. **[OPEN Q4]**
 
 ---
 
-## 6. Kindle — the constraint just got much smaller
+## 6. Kindle, the constraint just got much smaller
 
 Newest model, so: modern WebKit, CSS Grid, flexbox, custom properties, `fetch`, modern TLS.
 All the browser archaeology in the previous draft is deleted.
@@ -139,7 +137,7 @@ All the browser archaeology in the previous draft is deleted.
 | Page-turn reading, not scroll | Long single-column text is ideal; sticky UI is not |
 
 So: **the target moved from "a browser from 2012" to "a modern browser on slow paper."**
-Much more pleasant. Modern CSS is back on the menu; animation and hover stay off — because of the
+Much more pleasant. Modern CSS is back on the menu; animation and hover stay off, because of the
 display, not the engine.
 
 **What I'm keeping anyway:** the write form stays a plain `<form method="post">` that works with JS
@@ -152,7 +150,7 @@ Autosave and word count layer on top where JS is running.
 ## 7. The write path **[LOCKED]**
 
 "The password should remain the same" settles this. A single unchanging password, working on every
-device with nothing to paste and nothing to expire, can only be checked **server-side** — so the
+device with nothing to paste and nothing to expire, can only be checked **server-side**, so the
 browser-commits-directly-to-GitHub option is out for good. That approach needed a per-device token
 that expires in 366 days, which is the opposite of what you asked for.
 
@@ -175,10 +173,10 @@ shaan.wiki/title  live
 
 - One password, server-side, same everywhere, never expires.
 - Works with JavaScript disabled.
-- Free — 100k function calls a day; this needs about two.
+- Free, 100k function calls a day; this needs about two.
 - One `git push` deploys everything. One dashboard.
 - GitHub Actions still earns a place: the 9pm nudge cron. It's a builder and a scheduler,
-  never a receiver — there's no way to POST to a repo from an anonymous form.
+  never a receiver, there's no way to POST to a repo from an anonymous form.
 
 The TLS argument from the last round is now moot, since the Kindle is modern. Cloudflare still wins
 on having the function and the hosting in one place.
@@ -196,11 +194,11 @@ Three states: solid black (went), 1px outline (didn't), faint outline (hasn't ha
 Today's square gets a ring. The visible empty future is what ties the grid to the countdown.
 
 Why it fits a phone where GitHub's doesn't: GitHub needs ~10px squares to separate five greens. Two
-states at maximum contrast stay legible at 5px, so 53 columns is 318px — fits a 390px phone and a
+states at maximum contrast stay legible at 5px, so 53 columns is 318px, fits a 390px phone and a
 Kindle with no sideways scroll, then scales up on desktop. **The black-and-white rule is what makes
 the full-year view possible on mobile.**
 
-A table because that's what the data is — weeks × weekdays — and it needs no CSS Grid to hold shape.
+A table because that's what the data is, weeks × weekdays, and it needs no CSS Grid to hold shape.
 
 Mockups: [`gym-grid-year.html`](mockups/gym-grid-year.html) (chosen) ·
 [`gym-grid-options.html`](mockups/gym-grid-options.html) (all four, for reference).
@@ -215,7 +213,7 @@ the build step is for.
 ```
 src/
   pages/
-    index.html          home — countdown, grid, latest entry
+    index.html          home, countdown, grid, latest entry
     entry.html          template for a single entry
     archive.html        all 365 slots
     gym.html            full grid + month blocks + stats
@@ -235,7 +233,7 @@ src/
     print.css
   js/
     countdown.js        enhancement only
-    editor.js           autosave, word count — enhancement only
+    editor.js           autosave, word count, enhancement only
 
 entries/
   2026-08-01.md         one file per day. Title lives in frontmatter
@@ -249,14 +247,14 @@ build/
   build.py              ~150 lines, no dependencies
 
 mockups/                throwaway explorations, one file per idea
-public/                 build output — what gets served
+public/                 build output, what gets served
 ```
 
 Templating stays deliberately stupid: `{{> components/gym-grid-year.html }}` to include,
 `{{ title }}` for a value. No template language, no dependencies, no npm.
 
 **Source is many files; output is few.** The build inlines critical CSS so a reader still gets one
-request. Splitting the source is for us — the reader gets the monolith.
+request. Splitting the source is for us, the reader gets the monolith.
 
 ### Entry format
 
@@ -273,10 +271,10 @@ Body text. Wikilinks like [[On buying a domain]] resolve at build time.
 ```
 
 **Filename is the date, not the title.** That means changing your mind about the title mid-day is
-just a frontmatter edit, not a file rename — and one file per date structurally enforces one entry
+just a frontmatter edit, not a file rename, and one file per date structurally enforces one entry
 per day. The URL is derived from the title at build time.
 
-Everything else — index, grid, backlinks, word counts, streaks — is **derived**. Delete the whole
+Everything else, index, grid, backlinks, word counts, streaks, is **derived**. Delete the whole
 site and `entries/` rebuilds it. That's why the archive is text files and not a database.
 
 ---
@@ -286,7 +284,7 @@ site and `entries/` rebuilds it. That's why the archive is text files and not a 
 Under a no-backfill rule, this is a real deadline, and it deserves a plan rather than optimism.
 
 **What must exist by tomorrow:** the ability to save an entry with the right date. That's all.
-The grid, the archive, the styling, the wikilinks — none of it has to exist, because entries are
+The grid, the archive, the styling, the wikilinks, none of it has to exist, because entries are
 plain text files and every view is derived from them. **Anything not built tomorrow can be built on
 day 30 and will retroactively render every entry written before it.**
 
@@ -295,7 +293,7 @@ So the minimum viable Day 1 is:
 ```
 1. Cloudflare account + nameservers moved            you, ~15 min
 2. Repo public, Pages connected                      me, ~5 min
-3. /write — a plain form, password, saves a file     me, ~1 hour
+3. /write, a plain form, password, saves a file     me, ~1 hour
 4. A stub home page so the domain resolves           me, ~15 min
 ```
 
@@ -326,7 +324,7 @@ for the tooling not existing yet. Worth agreeing now so it isn't a debate tomorr
 /feed.xml              RSS
 ```
 
-Title collisions get `-2`. Renaming leaves a redirect stub — but note that sealing means titles
+Title collisions get `-2`. Renaming leaves a redirect stub, but note that sealing means titles
 can only change on the day itself, so this barely ever fires.
 
 ## 12. Black and white
@@ -350,7 +348,7 @@ Three values: `#000`, `#fff`, and greys strictly for structure.
 ```
 
 Rendered into the HTML at build time so it's correct with JS off. JS makes it tick live where JS
-runs — but never on the Kindle build, where a ticking clock would ghost the screen. **[OPEN Q8]**
+runs, but never on the Kindle build, where a ticking clock would ghost the screen. **[OPEN Q8]**
 
 **What happens at zero** is now a real question rather than a philosophical one, because zero
 arrives before the year does. See §3.
@@ -359,7 +357,7 @@ arrives before the year does. See §3.
 
 - **No backfilling.** The endpoint refuses any date but today.
 - **Editing:** all day, then never. §5.
-- **Deleting:** suggestion — no delete, only *retract*. The page stays, the body is struck through.
+- **Deleting:** suggestion, no delete, only *retract*. The page stays, the body is struck through.
   Wikis don't memory-hole. **[OPEN]**
 - **Minimum length:** one sentence counts. Zero words doesn't.
 
@@ -367,8 +365,7 @@ arrives before the year does. See §3.
 
 1. **Wikilinks + backlinks.** `[[Something]]` resolves at build time and adds a *"What links here"*
    section to the target. **This is what makes it a wiki and not a blog**, and it's ~30 lines.
-2. **Wanted pages.** Every `[[link]]` to a page that doesn't exist yet gets listed at `/wanted` —
-   a writing-prompt generator built from your own unfinished thoughts. Best idea in this document.
+2. **Wanted pages.** Every `[[link]]` to a page that doesn't exist yet gets listed at `/wanted`, a writing-prompt generator built from your own unfinished thoughts. Best idea in this document.
 3. **Stub notice.** Under ~50 words renders *"This entry is a stub."*
 4. **Revision history.** Every entry footer links to its own git history.
 5. **Citations.** Claims about your life footnoted to the commit or receipt that proves them.
@@ -380,8 +377,8 @@ The failure mode is not technical. It's **day 40, when you're tired.**
 - Phone-first editor: one textarea, nothing in the way.
 - Autosave every keystroke where JS runs.
 - One tap for the gym tick, no editor required.
-- PWA icon on the home screen — a bookmark gets forgotten by day 12, an icon doesn't.
-- **A nightly nudge** — a GitHub Action cron at ~9pm IST if nothing's written. Unglamorous, and
+- PWA icon on the home screen, a bookmark gets forgotten by day 12, an icon doesn't.
+- **A nightly nudge**, a GitHub Action cron at ~9pm IST if nothing's written. Unglamorous, and
   probably the highest-leverage feature in this document. Sealing at midnight makes it matter more.
   **[OPEN Q9]**
 - Never show a spinner.
@@ -404,27 +401,27 @@ Footer flexes it: *"This page is 11.4 KB and made 1 request."*
 
 **Q5 and Q6 are the only two that block tomorrow. The rest can wait.**
 
-**Q5 — Cloudflare: do you have an account, and are you OK moving nameservers off Spaceship?**
+**Q5, Cloudflare: do you have an account, and are you OK moving nameservers off Spaceship?**
 Blocking. Nothing ships without it.
 
-**Q6 — Day 1 insurance.** If the write path isn't live by tomorrow night, do we hand-commit Day 1's
+**Q6, Day 1 insurance.** If the write path isn't live by tomorrow night, do we hand-commit Day 1's
 entry? Blocking, in the sense that it needs deciding before tomorrow night, not after.
 
-**Q1 — Countdown target:** two numbers side by side, or point it at Day 365? (§3)
+**Q1, Countdown target:** two numbers side by side, or point it at Day 365? (§3)
 
-**Q2 — Addenda on sealed entries?** Append-only dated notes, or is sealed truly sealed? (§5)
+**Q2, Addenda on sealed entries?** Append-only dated notes, or is sealed truly sealed? (§5)
 
-**Q3 — One entry per day, or can there be two?** Changes the file layout. (§5)
+**Q3, One entry per day, or can there be two?** Changes the file layout. (§5)
 
-**Q4 — Gym tick seals at midnight too?** Forget to tap and the day is a miss. (§5)
+**Q4, Gym tick seals at midnight too?** Forget to tap and the day is a miss. (§5)
 
-**Q7 — Images at all?** Dithered photos inside entries, or strictly text forever?
+**Q7, Images at all?** Dithered photos inside entries, or strictly text forever?
 
-**Q8 — Countdown: days only, or ticking seconds** where the display can take it?
+**Q8, Countdown: days only, or ticking seconds** where the display can take it?
 
-**Q9 — The nightly nudge** — email, push, or none?
+**Q9, The nightly nudge**, email, push, or none?
 
-**Q10 — What are you actually writing?** Freeform, or a fixed shape (a thought / a thing learned /
+**Q10, What are you actually writing?** Freeform, or a fixed shape (a thought / a thing learned /
 a log)? A paragraph or a page? Fixed shapes are far easier to sustain on a bad day, and this
 changes the editor. Not blocking, but it's the difference between an archive of notes and an
 archive of essays.
@@ -433,12 +430,12 @@ archive of essays.
 
 ## 20. Parking lot
 
-- Email-to-entry via Cloudflare Email Workers — write from anywhere, no browser.
-- Word-count bar chart across the year — a monochrome skyline of daily output.
+- Email-to-entry via Cloudflare Email Workers, write from anywhere, no browser.
+- Word-count bar chart across the year, a monochrome skyline of daily output.
 - Footer stats: words written, days elapsed, longest streak, gym percentage.
 - `curl shaan.wiki` returns a nicely formatted plain-text version. Because it should.
-- `/api/shaan.json` — the whole archive as structured data.
+- `/api/shaan.json`, the whole archive as structured data.
 - A "year in review" page auto-generated on day 365.
 - Full-text search over the archive, `/` to focus.
-- Print stylesheet — the year prints as a book at day 365.
+- Print stylesheet, the year prints as a book at day 365.
 - Send each entry to the Kindle by email so the archive lands in your library too.

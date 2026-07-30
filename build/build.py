@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""shaan.wiki — the whole build.
+"""shaan.wiki, the whole build.
 
 Reads entries/*.md and data/gym.json, writes public/.
 No dependencies. Python 3.8+.
@@ -210,7 +210,7 @@ def grid(marks, today):
     squares were never square. Here aspect-ratio guarantees the geometry and
     gap guarantees the air.
 
-    No borders on cells — an outlined empty square spends ink on a day that
+    No borders on cells, an outlined empty square spends ink on a day that
     didn't happen. Three states, luminance only: presence is light.
     """
     start = DAY_ONE - timedelta(days=DAY_ONE.weekday())
@@ -228,11 +228,14 @@ def grid(marks, today):
             else:
                 cells.append("<i class=%s></i>" % ("y" if cd in marks else "n"))
         d += timedelta(days=7)
-    return '<div class="year">%s</div>' % "".join(cells)
+    # Mon and Fri only. Enough to orient a column without labelling all seven.
+    labels = '<span class="mon">Mon</span><span class="fri">Fri</span>'
+    return ('<div class="gridrow"><div class="wd">%s</div>'
+            '<div class="year">%s</div></div>' % (labels, "".join(cells)))
 
 
 def streaks(marks, today):
-    # A streak survives today being unwritten — the day isn't over yet.
+    # A streak survives today being unwritten, the day isn't over yet.
     cur = 0
     d = today if today in marks else today - timedelta(days=1)
     while d >= DAY_ONE and d in marks:
@@ -317,6 +320,7 @@ def main():
         "gym_count": str(len([d for d in gym_days if d <= today])),
         "elapsed": str(max(dnum, 0)),
         "total_words": str(sum(e["words"] for e in entries)),
+        "today_label": today.strftime("%-d %B").lower(),
     }
 
     gcur, glong = streaks(gym_days, today)
@@ -361,7 +365,7 @@ def main():
         '<li><a href="/%s/">%s</a><span class="n">%d</span></li>'
         % (e["slug"], html.escape(e["title"]), e["day"]) for e in recent)
     ctx = dict(base, title=SITE, recent=items or
-               '<li class="empty">&mdash;</li>')
+               '<li class="empty">nothing yet</li>')
     total += write("index.html", render(read(os.path.join(pages, "index.html")), ctx))
 
     # archive
@@ -374,7 +378,7 @@ def main():
         elif d > today:
             cell = '<span class="miss">&nbsp;</span>'
         else:
-            cell = '<span class="miss">&mdash;</span>'
+            cell = '<span class="miss">&middot;</span>'
         rows += '<li><span class="n">%d</span>%s</li>' % (n, cell)
     ctx = dict(base, title="Archive", rows=rows)
     total += write("archive/index.html",
@@ -392,7 +396,7 @@ def main():
     witems = "".join('<li><a href="/write/">%s</a></li>' % html.escape(t)
                      for t in sorted(wanted))
     ctx = dict(base, title="Wanted", items=witems or
-               '<li class="empty">&mdash;</li>')
+               '<li class="empty">nothing yet</li>')
     total += write("wanted/index.html",
                    render(read(os.path.join(pages, "wanted.html")), ctx))
 

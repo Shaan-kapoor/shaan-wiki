@@ -9,9 +9,10 @@
 *, *::before, *::after { box-sizing: border-box; }
 
 :root {
+  --gg:      2px;   /* grid gap, shared by the year and its labels */
   --bg:      #000;
   --fg:      #fff;   /* emphasis, links, the things that matter */
-  --prose:   #c9c9c9;/* running text. Not pure white — it haloes on black */
+  --prose:   #c9c9c9;/* running text. Not pure white, it haloes on black */
   --quiet:   #6a6a6a;/* apparatus: dates, day numbers */
   --hush:    #3a3a3a;/* the faintest thing that is still there */
   --cell-on: #ededed;
@@ -141,7 +142,7 @@ li::marker { color: var(--quiet); }
 .year {
   /* The ratio lives on the container, not the cells. aspect-ratio on a cell
      needs a width to compute height, the width comes from a 1fr track, and
-     the track needs the row height — a cycle browsers break at roughly a 5px
+     the track needs the row height, a cycle browsers break at roughly a 5px
      floor per column, which overflows any phone. Fixing the container's shape
      makes both tracks definite and the cycle disappears. */
   display: grid;
@@ -149,9 +150,8 @@ li::marker { color: var(--quiet); }
   grid-template-rows: repeat(7, 1fr);
   grid-auto-flow: column;
   aspect-ratio: 53 / 7;
-  gap: 2px;
+  gap: var(--gg);
   width: 100%;
-  margin: 0 0 10px;
 }
 .year i {
   display: block;
@@ -162,6 +162,42 @@ li::marker { color: var(--quiet); }
 .year i.y { background: var(--cell-on); }
 .year i.n { background: var(--cell-off); }
 .year i.t { box-shadow: 0 0 0 1px var(--fg); }
+
+.gridrow {
+  display: grid;
+  /* minmax(0,1fr) again: a bare 1fr floors at the year's min-content
+     width, which is wider than a phone. */
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  align-items: stretch;
+  margin: 0 0 10px;
+}
+/* The labels are absolutely positioned so they contribute no height. Laid out
+   as grid rows, their own min-content height (7 x 9px) overrode the year's
+   aspect ratio and stretched every square into a 6x9 rectangle. */
+.wd { position: relative; width: 26px; min-height: 0; }
+.wd span {
+  position: absolute; left: 0; transform: translateY(-50%);
+  font: 400 9px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .08em; color: var(--quiet);
+}
+.wd .mon { top: 7.14%; }    /* centre of row 1 of 7 */
+.wd .fri { top: 64.3%; }    /* centre of row 5 of 7 */
+
+/* one tap to mark today, no editor */
+#todaywrap { display: flex; align-items: center; gap: 16px; margin-bottom: 44px; }
+#today {
+  width: 62px; height: 62px; padding: 0;
+  border: 1px solid var(--hush); border-radius: 3px;
+  background: none; color: var(--quiet); cursor: pointer;
+  display: grid; place-items: center;
+  transition: background-color .22s ease, color .22s ease, border-color .22s ease;
+}
+#today svg { width: 26px; height: 26px; }
+#today[aria-pressed="true"] {
+  background: var(--cell-on); border-color: var(--cell-on); color: var(--bg);
+}
+#today:focus-visible { outline: 1px solid var(--fg); outline-offset: 3px; }
 
 .block { margin-bottom: 46px; }
 .blockhead {
@@ -199,7 +235,7 @@ ul.arch a { font-size: 15px; }
 
 /* ---- editor ------------------------------------------------------------ */
 /* No borders, no labels, no boxes. The document is the interface, and it is
-   set in the same face as the published page — so writing and reading are
+   set in the same face as the published page, so writing and reading are
    the same act rather than two views of it. */
 /* A class selector beats the UA sheet's [hidden] rule, which is how the
    editor was rendering through the password gate. */
@@ -256,6 +292,7 @@ ul.arch a { font-size: 15px; }
 #state.fade { opacity: 0; }
 
 .gate { display: flex; align-items: baseline; gap: 14px; margin-top: 8px; }
+.gate[data-state="checking"] #pw { color: var(--quiet); }
 #pw {
   flex: 1; max-width: 260px;
   background: none; border: 0; padding: 0; color: var(--fg);
@@ -264,6 +301,15 @@ ul.arch a { font-size: 15px; }
 }
 #pw:focus { outline: none; }
 #pw::placeholder { color: var(--hush); letter-spacing: .14em; }
+
+/* ---- theme transition -------------------------------------------------- */
+/* The default cross-fade is suppressed so the new theme can be wiped in as a
+   circle growing from the toggle. Without this the two roots fade through a
+   grey midpoint, which in a black-and-white system looks like a fault. */
+::view-transition-old(root) { animation: none; }
+::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
+::view-transition-old(root) { z-index: 0; }
+::view-transition-new(root) { z-index: 1; }
 
 /* ---- intro ------------------------------------------------------------- */
 .intro {
@@ -280,7 +326,8 @@ ul.arch a { font-size: 15px; }
   body { padding-top: 54px; font-size: 19px; }
   h1, #title { font-size: 40px; }
   #body { font-size: 19px; }
-  .year { gap: 3px; }
+  :root { --gg: 3px; }
+  .wd { width: 30px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

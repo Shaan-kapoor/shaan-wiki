@@ -59,7 +59,7 @@ def cls(d):
 
 def cell(d, tip=False):
     """tip=True adds a title attribute. Kept off the dense grids to keep the
-    page small — the Kindle has no hover anyway, and 1500 title attrs is 30 KB."""
+    page small, the Kindle has no hover anyway, and 1500 title attrs is 30 KB."""
     c = cls(d)
     if c is None:
         return '<td class="x"></td>'
@@ -67,8 +67,8 @@ def cell(d, tip=False):
         c += " t"
     if not tip:
         return '<td class="%s"></td>' % c
-    label = d.strftime("%a %-d %b %Y") + (" — went" if cls(d) == "y" else
-                                          " — no" if cls(d) == "n" else "")
+    label = d.strftime("%a %-d %b %Y") + (", went" if cls(d) == "y" else
+                                          ", no" if cls(d) == "n" else "")
     return '<td class="%s" title="%s"></td>' % (c, label)
 
 
@@ -239,13 +239,13 @@ hr{border:0;border-top:1px solid #000;margin:0}
 LEGEND = ('<p class="legend"><i class="y"></i>went<i class="n"></i>didn\'t'
           '<i class="f"></i>not yet</p>')
 
-html = """<title>shaan.wiki — gym grid mockup</title>
+html = """<title>shaan.wiki, gym grid mockup</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>%s</style>
 <div class="wrap">
-<h1>Gym grid &mdash; layout options</h1>
+<h1>Gym grid &#8722; layout options</h1>
 <p class="note">Static HTML. No JavaScript, no CSS Grid, no flexbox, no custom
-properties, no web fonts, no dark mode. Tables only &mdash; so this should render
+properties, no web fonts, no dark mode. Tables only &#8722; so this should render
 on the Kindle browser exactly as it does here. That's the point: it's a fidelity
 test, not a showcase. If a layout below is broken on your Kindle, that layout is out.</p>
 <p class="lead">Simulated data: %d of %d days elapsed, pretending today is
@@ -255,11 +255,11 @@ current streak <b>%d</b> &middot; longest <b>%d</b></p>
 
 <h2>A &middot; Full year, weeks as columns</h2>
 <p class="note">GitHub's shape. 53 columns &times; 7 rows, sized to fit a phone
-and a Kindle with no sideways scrolling. The whole year in one object &mdash;
+and a Kindle with no sideways scrolling. The whole year in one object &#8722;
 including the empty future.</p>
 %s
 %s
-<div class="verdict"><b>Why this one</b>Weekday patterns read vertically &mdash;
+<div class="verdict"><b>Why this one</b>Weekday patterns read vertically &#8722;
 you can see which days you always skip. The unfilled future is visible, which is
 what ties the grid to the countdown. Fits 320px because black-on-white survives
 at 6px in a way five shades of green never could.</div>
@@ -270,13 +270,13 @@ per month, but the year stops being a single image.</p>
 %s
 %s
 
-<h2>C &middot; Vertical &mdash; 7 columns, scrolling down</h2>
+<h2>C &middot; Vertical &#8722; 7 columns, scrolling down</h2>
 <p class="note">Same data rotated. Fits phone width perfectly and scrolls the
 natural direction, but it's 53 rows long and you never see the year at once.</p>
 <div class="scroll">%s</div>
 
 <h2>D &middot; Recent eight weeks, large</h2>
-<p class="note">Not an alternative &mdash; a companion. This is what actually
+<p class="note">Not an alternative &#8722; a companion. This is what actually
 matters day to day, and it's legible at arm's length on e-ink. Could sit on the
 home page with the full year on <code>/gym</code>.</p>
 %s
@@ -288,7 +288,7 @@ home page with the full year on <code>/gym</code>.</p>
        variant_vertical(), variant_recent(), LEGEND)
 
 # --- the chosen design, on its own -------------------------------------------
-chosen = """<title>shaan.wiki — gym grid</title>
+chosen = """<title>shaan.wiki, gym grid</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>%s</style>
 <div class="wrap">
@@ -297,12 +297,12 @@ chosen = """<title>shaan.wiki — gym grid</title>
 current streak <b>%d</b> &middot; longest <b>%d</b></p>
 %s
 %s
-<p class="note">Simulated data, pretending today is %s &mdash; day %d of 365.
+<p class="note">Simulated data, pretending today is %s &#8722; day %d of 365.
 Static HTML: no JavaScript, no CSS Grid, no flexbox, no custom properties, no web
 fonts. A table, which is what a year of weekdays actually is.</p>
 
 <h2>Recent eight weeks</h2>
-<p class="note">The companion view for the home page &mdash; legible at arm's
+<p class="note">The companion view for the home page &#8722; legible at arm's
 length on e-ink.</p>
 %s
 %s
