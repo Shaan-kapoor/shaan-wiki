@@ -1,8 +1,8 @@
 # idea.md — shaan.wiki
 
-Living ideation doc. Nothing here is final. Sections marked **[OPEN]** need Shaan's input.
+Living ideation doc. **[LOCKED]** = decided. **[OPEN]** = needs Shaan.
 
-Last updated: 2026-07-31 (Day 3)
+Last updated: 2026-07-31
 
 ---
 
@@ -11,115 +11,243 @@ Last updated: 2026-07-31 (Day 3)
 **shaan.wiki is a one-year writing machine with a death clock on it.**
 
 Shaan bought the domain on 29 July 2026. It expires on 29 July 2027. That's 365 days.
-For each of those days he writes one thing and ticks whether he went to the gym.
-Every entry becomes a permanent page in a wiki. At the end, the site is an archive of a year —
-365 articles, 365 squares, one number counting down to zero the whole time.
+Each day he writes one thing and ticks whether he went to the gym.
+Every entry becomes a permanent page. At the end, the site is the archive of a year —
+365 articles, 365 squares, and a number that counted down to zero the whole time.
 
 The constraint isn't decoration. **The domain expiry is the deadline, and the countdown is the masthead.**
 
-## 2. Hard requirements (from Shaan, non-negotiable)
-
-1. **Vanilla HTML / CSS / JS.** Lightweight, extremely fast-loading. No framework.
-2. **Black and white only.** Genuine requirement, not a preference.
-3. **Minimal, encyclopedia-like.** Wikipedia as a structural reference, stripped further.
-4. **Write from the website itself.** After setup, Shaan never opens a code editor again.
-   He goes to the site, types, hits save, and it's live.
-5. **One password.** Not OAuth, not accounts. A single passphrase that unlocks writing.
-6. **Every entry is a text file.** Plain text/markdown is the storage format. No database of record.
-7. **URL = title.** `shaan.wiki/<title-slug>`. Date access as well.
-8. **Countdown timer** to domain expiry, based on the real expiry date.
-9. **Gym tracker.** Binary tick per day, rendered as a GitHub-style contribution grid.
-10. **365-day archive** is the end product.
-
-## 3. Ground truth
+## 2. Ground truth
 
 ```
 Domain          shaan.wiki
 Registrar       Spaceship, Inc.
 Registered      2026-07-29 19:48:39 UTC
-Expires         2027-07-29 19:48:39 UTC
+Expires         2027-07-29 19:48:39 UTC   ← the countdown target
 Nameservers     launch1/launch2.spaceship.net  (parked — nothing served yet)
-Today           2026-07-31  →  Day 3, ~363 days remain
-Repo            github.com/Shaan-kapoor/shaan-wiki  (private)
+Repo            github.com/Shaan-kapoor/shaan-wiki  (private for now, must go public)
 ```
 
 GitHub rejects repo names ending in `.wiki`, hence `shaan-wiki`. Doesn't affect the domain.
 
-## 4. The central problem: a static site that writes to itself
+## 3. Decisions **[LOCKED]**
 
-Everything else is easy. This is the part that decides the architecture.
+| # | Decision | Consequence |
+|---|---|---|
+| 1 | Vanilla HTML/CSS/JS, no framework | No build tooling on Shaan's machine, ever |
+| 2 | **Black and white only** | No accent colour, not even for links |
+| 3 | Write from the site itself | After setup, no code editor is ever opened again |
+| 4 | One password | Not OAuth, not accounts |
+| 5 | Entries are plain text files | Git is the archive and the source of truth |
+| 6 | `shaan.wiki/<title>` | Title determines the URL |
+| 7 | Countdown to domain expiry | Real timestamp, on every page |
+| 8 | Gym tracker, binary tick | **Gym only. No writing grid.** |
+| 9 | **Public** — anyone can read | Repo goes public, GitHub Pages is free |
+| 10 | **Browser commits straight to GitHub** | No server, no Worker, no infrastructure |
+| 11 | **No backfilling.** A missed day stays missed | The grid is a record, not a to-do list |
+| 12 | **Mobile-first** — most writing happens on a phone | The phone is the primary interface, not the desktop |
+| 13 | **Must work on Kindle** | This is the hardest constraint in the project. See §6 |
 
-GitHub Pages serves files. It cannot accept a POST. So "type in the browser → it's saved forever"
-needs something to turn a form submission into a committed file. Three real options:
+---
 
-### Option A — Browser commits directly to GitHub
-The `/write` page holds a fine-grained GitHub token (encrypted with the passphrase, stored in
-`localStorage`). On save it calls the GitHub Contents API and commits the file itself.
+## 4. Consequences of "browser commits straight to GitHub" + "public"
 
-- ✅ Zero infrastructure. Zero cost. Nothing to maintain.
-- ✅ Ships fastest.
-- ❌ A repo-write token lives in the browser. Scoped to one repo, contents-only, so worst case is
-  someone defaces the wiki and git history undoes it — but it's a real token in a real browser.
+Two things follow that are worth understanding before we build.
 
-### Option B — A tiny Cloudflare Worker as a commit proxy ★ recommended
-Browser POSTs `{passphrase, title, body}` to a ~40-line Worker. The Worker checks the passphrase
-against a hash, then commits to GitHub using a token held as a **server-side secret**.
+### 4a. The "one password" can't literally be one password
 
-- ✅ No token ever reaches the browser. The password is checked where it should be.
-- ✅ Free tier is enormous — 100k requests/day. This will use ~2.
-- ✅ Rate limiting, and the write endpoint can be locked down properly.
-- ❌ One extra thing to deploy. Once. Then never again.
+With no server, there's nobody to check a password against. The thing that actually authorises a
+write is a **GitHub token**, and on a public site that token can't be shipped in the code — the
+code is public, so an encrypted token blob in the repo could be cracked offline at leisure.
 
-### Option C — No git, database instead (Cloudflare D1/KV)
-Entries live in a database, rendered at the edge.
-
-- ✅ Instant saves, no rebuild wait.
-- ❌ Breaks requirement #6 — the archive stops being plain text files in a repo you own.
-  Loses git history, loses "download the whole year as a folder."
-
-**Recommendation: B.** Requirement #6 says the archive is text files, which means git is the
-source of truth, which means we need a commit path, which means a secret needs a home.
-A Worker is the smallest correct home for it.
-
-### What this means for "no build step"
-
-The reader still gets pure static HTML. But a **GitHub Action** runs on every push to `entries/`
-and regenerates the site: one HTML page per entry, the index, the grid, the search index, the RSS.
-
-The build step exists — it just runs on GitHub's machines, never on Shaan's.
-That satisfies "I never come back to coding" while keeping the site JS-free for readers.
-
-**Publish latency:** ~30–60s from hitting save to the page being live. The write page can show
-the rendered entry immediately so it never *feels* like waiting. [OPEN Q6]
-
-## 5. How a day works
+So the honest version is:
 
 ```
-  1. Open shaan.wiki/write on phone or laptop
-  2. Passphrase (remembered on the device — typed once, then never again)
+First time on a device      paste the GitHub token once, choose a short passphrase
+                            → token is encrypted with the passphrase (WebCrypto,
+                              PBKDF2 + AES-GCM) and stored in localStorage
+Every time after that       type the passphrase → start writing
+Nothing is ever published   the token exists only on your phone and your laptop
+```
+
+Two devices, two one-time setups. After that it behaves exactly like the "just a password" you
+wanted. **[OPEN Q4]** — confirm you're fine with the one-time token paste per device.
+
+### 4b. The token expires, and that's a feature
+
+GitHub fine-grained tokens max out at **366 days**. The domain expires in 365.
+So: issue the token for the life of the domain, scoped to this one repo, `contents: write` only.
+It dies when the project does. Nothing to rotate, nothing to remember.
+
+Worst case if it leaks: someone can edit one repo of public writing, and git history undoes it.
+That's the exposure, and it's acceptable — but it is real, and it's why the passphrase matters.
+
+### 4c. Build runs in CI, never on your machine
+
+The reader gets pure static HTML. A **GitHub Action** fires on every push to `entries/` and
+regenerates the site — one page per entry, the index, the grid, the search index, the RSS.
+
+The build step exists. It just runs on GitHub's machines. That's what makes "I never open a code
+editor again" true while keeping the site JS-free to read.
+
+**Publish latency:** ~30–60s from save to live. The write page renders the entry immediately, so
+it never feels like waiting.
+
+---
+
+## 5. Mobile is the primary interface
+
+Most entries get typed on a phone, in bed, at 11:40pm, tired. Every design decision defers to that.
+
+- **The editor is one full-height textarea.** No toolbar, no formatting buttons, no preview toggle
+  competing for space. Title field, body, gym tick, save. That's the entire UI.
+- **Autosave to `localStorage` on every keystroke.** A dead battery must never cost an entry.
+- **The keyboard must not cover the save button.** Save lives in the header, not the footer,
+  and the layout uses `dvh` units so the viewport shrink is handled.
+- **The gym tick is reachable without opening the editor** — one tap from the home screen.
+- **Installable as a PWA** so it's an app icon, not a bookmark. This matters more than it sounds:
+  a bookmark gets forgotten by day 12, an icon doesn't.
+- **No hover-dependent anything.** Every hover affordance needs a tap equivalent.
+- **Font size ≥ 16px in inputs**, or iOS zooms the page on focus and the whole thing feels broken.
+
+---
+
+## 6. Kindle compatibility — the constraint that shapes everything
+
+This is the most restrictive target and it needs stating plainly, because it deletes a lot of the
+clever ideas in this document.
+
+The Kindle "Experimental Web Browser" is an old WebKit on e-ink. Depending on the model, expect:
+
+| Thing | Status on Kindle |
+|---|---|
+| CSS Grid | **Unreliable to absent** |
+| Flexbox | Partial, buggy, old syntax on older models |
+| CSS custom properties (variables) | Risky on pre-2018 models |
+| `:has()`, `popover`, anchor positioning, view transitions | **None of it** |
+| `fetch()` | Likely missing — XHR only |
+| Animation / transitions | Technically render, but e-ink ghosts. Effectively unusable |
+| Hover | No pointer. Doesn't exist |
+| Colour | 16 greys. **Black and white is already the right answer** |
+| Web fonts | Skip them. System serif only |
+| TLS | Older models fail on modern certs entirely **[OPEN Q1]** |
+
+### What this forces
+
+1. **Progressive enhancement stops being aspirational and becomes the architecture.**
+   Base layer: HTML that reads correctly with no CSS at all. Then simple CSS everything supports.
+   Then modern CSS as pure garnish, inside `@supports`. The `popover` hover-previews, the view
+   transitions, the scroll-driven progress bar — all of it is garnish now. None of it can be load-bearing.
+2. **The gym grid must be a `<table>`.** Not CSS Grid, not flexbox. A table of weeks × weekdays is
+   what the data literally is, it's accessible, and it renders on anything built since 1997.
+   *This turns out to be the right call on every device, not a compromise.*
+3. **Layout in one column.** No sidebars, no infobox floated beside text. Kindle is 600px wide and
+   so is a phone. One column, always. The v1 Wikipedia-infobox idea is dead — good riddance.
+4. **Reading pages ship zero required JS.** Countdown is server-rendered into the HTML at build
+   time; JS only makes it tick live where JS exists.
+5. **A `/k` mode may be worth it** — same content, stripped stylesheet, no JS at all. Cheap to
+   generate in the same build, and it guarantees the Kindle experience instead of hoping.
+
+### Writing *from* the Kindle
+
+Different question from reading, and much harder: the Kindle on-screen keyboard makes composing an
+entry genuinely unpleasant, and `fetch` may not exist for the commit call (XHR fallback needed).
+
+**Honest recommendation: Kindle is a reading device for this project, phone is the writing device.**
+I'll make `/write` degrade far enough that it *works* on a Kindle in an emergency, but optimising
+for it would cost more than it returns. **[OPEN Q2]** — agree, or do you actually want to compose there?
+
+### The upside
+
+Every Kindle constraint points the same direction as the things you already asked for: black and
+white, no animation, tiny pages, text first, no dependencies. **The Kindle isn't fighting the
+design — it's enforcing it.** If it looks good on e-ink, it's correct.
+
+---
+
+## 7. The gym grid
+
+Gym only, per your call. So the design question is purely: what shape does a year of binary ticks take?
+
+### How the references do it
+
+**GitHub's contribution graph** — 53 columns (weeks) × 7 rows (weekdays), ~10–11px squares with
+~3px gaps, month labels along the top, weekday labels on alternate rows, 5 intensity levels,
+horizontal scroll on mobile.
+Two things it gets right: weeks-as-columns makes **day-of-week patterns visible vertically** (you
+can see at a glance that you never go on Sundays), and the whole year is one image.
+One thing it gets wrong for us: it scrolls sideways on a phone, which is bad — and intensity levels
+are wasted on binary data.
+
+**Habit apps (Streaks, Habitica, and most of the genre)** — month-at-a-time calendar blocks.
+More legible per-month, no scrolling, but you lose the year as a single object, and 12 blocks is
+12 things to look at instead of one.
+
+### The decision
+
+**Full year, 53 × 7, weeks as columns — GitHub's shape — built as a `<table>`, sized to fit a phone
+and a Kindle with no scrolling.**
+
+The reason it fits where GitHub's doesn't: GitHub needs ~10px squares to distinguish five shades of
+green. We have two states, black and white, the highest contrast that exists. **A 5px black square
+on white is perfectly legible.** 53 columns at a 6px pitch is 318px — it fits a 390px phone and a
+600px Kindle with room to spare, then scales up on desktop.
+
+So the B&W constraint is what makes the full-year view possible on mobile at all. Nice when a
+constraint pays for itself.
+
+```
+        Aug    Sep    Oct    Nov    Dec    Jan    Feb ...
+   Mon  ■ ■ □ ■ ■ □ ■ ■ ■ □ ■ · · · · · · · · · · · ·
+   Tue  ■ ■ ■ □ ■ ■ ■ □ ■ ■ ■ · · · · · · · · · · · ·
+   Wed  □ ■ ■ ■ □ ■ ■ ■ □ ■ ■ · · · · · · · · · · · ·
+   Thu  ■ □ ■ ■ ■ ■ □ ■ ■ ■ □ · · · · · · · · · · · ·
+   Fri  ■ ■ □ ■ ■ □ ■ ■ ■ ■ □ · · · · · · · · · · · ·
+   Sat  □ □ ■ ■ □ ■ □ ■ ■ ■ ■ · · · · · · · · · · · ·
+   Sun  □ ■ □ ■ ■ ■ ■ □ □ ■ ■ · · · · · · · · · · · ·
+
+   ■ went    □ didn't    · not yet
+        147 of 213 days · current streak 6 · longest 19
+```
+
+Three states, three treatments: **solid black** (went), **1px outline** (didn't), **faint dot**
+(hasn't happened). The future being visible — a year of empty squares waiting — is the whole
+emotional point, and it's what ties the grid to the countdown.
+
+Today's square gets a ring so you can always find it.
+
+`/gym` gets the same data as month blocks for the "which Tuesdays do I skip" question, plus stats.
+The homepage gets the year.
+
+**A mockup of the real thing is in [`mockups/gym-grid.html`](mockups/gym-grid.html)** — open it on
+your phone and your Kindle before we commit to it. **[OPEN Q3]**
+
+---
+
+## 8. How a day works
+
+```
+  1. Tap the shaan.wiki icon on the home screen
+  2. Passphrase (once per session, or once per device if you prefer)
   3. Title  →  becomes the URL
-  4. Write. Autosaves to localStorage continuously so nothing is ever lost.
+  4. Write. Autosaves every keystroke.
   5. [ ] Gym today?          ← one tap
   6. Save
        ↓
-  Worker commits  entries/2026-07-31-title.md  +  updates  data/gym.json
+  Browser commits  entries/2026-07-31-title.md  +  updates  data/gym.json
        ↓
   Action rebuilds  →  live at  shaan.wiki/title  in under a minute
 ```
 
-## 6. Storage layout
+## 9. Storage layout
 
 ```
 entries/
   2026-07-29-first-entry.md
   2026-07-30-on-buying-a-domain.md
-  ...
 data/
   gym.json          { "2026-07-29": true, "2026-07-30": false, ... }
-  meta.json         day numbers, streaks, word counts — derived, regenerated by CI
 ```
-
-Entry file format:
 
 ```markdown
 ---
@@ -130,236 +258,176 @@ gym: true
 tags: [domains, writing]
 ---
 
-Body text. Wikilinks like [[On buying a domain]] resolve to real links at build time.
+Body text. Wikilinks like [[On buying a domain]] resolve at build time.
 ```
 
-Frontmatter is the only structure. Everything else — the index, the grid, backlinks,
-word counts, streaks — is **derived**, so it can be regenerated from scratch at any time.
-Delete the whole site and the `entries/` folder rebuilds it. That's the durability guarantee.
+Frontmatter is the only structure. The index, the grid, backlinks, word counts and streaks are all
+**derived** — delete the entire site and `entries/` rebuilds it. That's the durability guarantee,
+and it's why the archive is text files rather than a database.
 
-## 7. URLs
+## 10. URLs
 
 ```
 /                      home — countdown, gym grid, latest entry, recent list
-/<title-slug>          an entry            shaan.wiki/on-buying-a-domain
-/<title-slug>.txt      the raw source of that entry, plain text
-/day/2                 same entry by day number
-/2026/07/30            same entry by date
+/<title-slug>          an entry
+/<title-slug>.txt      raw source, plain text
+/day/2                 the same entry by day number
+/2026/07/30            the same entry by date
 /archive               all 365 slots, filled and empty
-/archive.txt           the entire year as one downloadable text file
-/gym                   the grid, full size, with streak stats
+/archive.txt           the whole year as one downloadable file
+/gym                   full grid, month blocks, streak stats
 /tag/<tag>             entries by tag
-/wanted                wikilinks pointed at pages that don't exist yet — a writing backlog
+/wanted                wikilinks pointing at pages that don't exist yet
 /random                jump somewhere
-/colophon              how this thing is built
+/colophon              how it's built
 /write                 the password-gated writing surface
 /feed.xml              RSS
+/k/...                 Kindle mode — same content, no CSS tricks, no JS
 ```
 
-Title collisions get `-2` appended. Renaming a title later leaves a redirect stub behind,
-because a wiki that breaks its own links is a broken wiki.
+Title collisions get `-2`. Renaming leaves a redirect stub, because a wiki that breaks its own
+links is a broken wiki.
 
-## 8. Black and white — how to make monochrome not look unfinished
+## 11. Black and white — making monochrome look deliberate
 
-Only three values in the whole site: `#000`, `#fff`, and greys strictly for structure
-(hairlines, the empty state of grid squares). No accent colour anywhere.
+Three values: `#000`, `#fff`, and greys used strictly for structure (hairlines, empty squares).
 
-Everything colour would normally do gets done another way:
+- **Hierarchy** → size, weight, letter-spacing. Nothing else.
+- **Emphasis** → full black fill, white text. Used sparingly it hits harder than any colour.
+- **Links** → underlined, offset tuned. Visited gets a subtler underline, not a different hue.
+- **Rules** → 1px hairlines. Wikipedia's underlined headings, thinner, with more air.
+- **Dark mode** → exact inversion. B&W is the one palette where flipping is lossless.
+  (Though on Kindle it's irrelevant, and on e-ink dark mode is actively worse.)
+- **Images** → 1-bit dithered (Floyd–Steinberg). Tiny, instant, and looks intentional in a way a
+  greyscale photo never does. Also the only image format that's *native* to e-ink. **[OPEN Q7]**
+- **Texture** → density is the only ornament available: how tight the grid, how heavy the rule,
+  how much air. Monochrome forces us to be good at this.
 
-- **Hierarchy** → type size, weight, and letter-spacing. Nothing else.
-- **Emphasis** → a full black fill with white text. Used sparingly, it hits harder than any colour.
-- **Links** → underlined, `text-underline-offset` tuned. Visited links get a subtler underline,
-  not a different hue.
-- **Rules** → 1px hairlines. Wikipedia's underlined headings, but thinner and with more air.
-- **Dark mode** → a true inversion. Black and white is the one palette where flipping is exact.
-- **Images** → 1-bit dithered (Floyd–Steinberg / halftone). A dithered photo is tiny, loads
-  instantly, and looks intentional in a way a greyscale photo never does. [OPEN Q9]
-- **Texture** → the only ornament available is density: how tight the grid is, how heavy the rule,
-  how much whitespace. This is a real design language, and monochrome forces us to be good at it.
+The stylesheet should fit on one screen and inline into `<head>`.
 
-The whole stylesheet should fit in one screen and inline into `<head>`.
-
-## 9. The gym grid — and a better idea
-
-GitHub's grid is 53 weeks × 7 days, coloured by intensity. Gym attendance is binary,
-so intensity is wasted. But there are **two** daily signals here: *did I write* and *did I go*.
-
-So: **one grid, four states, encoded without colour.**
-
-```
-  ██   both — wrote and went              solid black
-  ◨    wrote only                         left half filled
-  ◧    gym only                           right half filled
-  ·    neither — a day that got away      1px outline, empty
-  ␣    the future                         nothing, faintest hairline
-```
-
-One square per day, 365 of them, in a 53×7 lattice. Hover (or tap) a square → the entry title
-and date. Click → the entry.
-
-This is the single image of the year, and it's the thing people will screenshot.
-It's also achievable in pure CSS with a `conic-gradient` per state and no JS.
-
-**Alternative if that reads as too clever:** two separate grids stacked, one for writing,
-one for the gym. Less elegant, more legible. [OPEN Q7]
-
-## 10. The countdown
-
-Top of every page, in the masthead:
+## 12. The countdown
 
 ```
    D A Y   0 0 3   ·   3 6 2   D A Y S   R E M A I N
    ────────────────────────────────────────────────
 ```
 
-Ticks live in JS against the real expiry timestamp `2027-07-29T19:48:39Z`. Server-rendered
-into the HTML too, so it's correct with JS off.
+Rendered into the HTML at build time so it's correct with JS off and on Kindle. JS makes it tick
+live where JS exists.
 
-Design question: is the countdown **days** (calm, monumental) or **days:hours:minutes:seconds**
-(urgent, ticking)? Seconds make it a performance piece. Days make it a fact. [OPEN Q8]
+Days-only (calm, monumental) or ticking seconds (urgent, a performance)? Seconds would ghost
+horribly on e-ink, so at minimum the Kindle build is days-only. **[OPEN Q6]**
 
-**And the real question — what happens at zero?** Three genuinely different endings:
+**What happens at zero?** Renew and start Year Two · freeze it as a permanent monument · let it
+lapse and go dark. Doesn't need answering now, but the site should be *designed* as though the
+ending matters, because that's what makes a countdown mean anything. **[OPEN Q10]**
 
-- **Renew.** Year Two begins, the grid resets, the archive stays. The countdown was a rhythm.
-- **Freeze.** The site is renewed but locked. 365 entries, no more writing, permanent monument.
-- **Let it die.** The archive is exported, the domain lapses, the URL goes dark.
-  The most artistically pure and the one nobody actually does.
+## 13. Rules of the game
 
-This doesn't need answering now, but the site should be *designed* as though the ending matters,
-because that's what makes the countdown mean anything. [OPEN Q10]
+- **No backfilling.** **[LOCKED]** A gap is permanent. The write endpoint refuses any date but today.
+- **Editing an entry after posting:** allowed — it's a wiki, and git keeps every version. Each entry
+  footers to its own revision history.
+- **Deleting:** suggestion — no delete, only *retract*. The page stays, the body is struck through.
+  Wikis don't memory-hole. **[OPEN]**
+- **Minimum length:** one sentence counts. Zero words doesn't.
+- **Day boundary:** needs a timezone, presumably IST — and a grace window, because writing at 1am
+  about the day that just ended is the normal case, not the exception. Suggest the day ends at 4am
+  local. **[OPEN Q5]**
+- **Does the gym tick follow the same no-backfill rule?** If you forget to tick on Tuesday, is
+  Tuesday gone? Consistency says yes; it also means one forgetful tap costs you a square you earned.
+  **[OPEN Q8]**
 
-## 11. Rules of the game **[OPEN Q3]**
+## 14. Wiki features worth having
 
-These are the project's ethics and they're worth deciding on purpose:
+1. **Wikilinks + backlinks.** Write `[[Something]]`; the build resolves it and adds a
+   *"What links here"* section to the target. **This is what makes it a wiki and not a blog**,
+   and it's ~30 lines in the build script.
+2. **Wanted pages.** Every `[[link]]` to a page that doesn't exist yet gets listed at `/wanted` —
+   a writing-prompt generator built out of your own unfinished thoughts. Best idea in this document.
+3. **Stub notice.** Under ~50 words renders *"This entry is a stub."* Honest, and the same joke
+   Wikipedia has been making for 25 years.
+4. **Revision history.** Footer of every entry: "Last edited on X · all revisions" → GitHub.
+5. **Talk pages.** `/talk/<entry>` — where you argue with your own past position.
+6. **Citations.** Claims about your own life footnoted to the commit, tweet, or receipt that proves
+   them. Turns autobiography into something falsifiable.
 
-- **Can you backfill a missed day?** If yes, the grid is a to-do list. If no, the grid is a record.
-  *Strong opinion: no backfilling.* A gap you can never fill is what makes the streak worth
-  anything. A softer version: backfill is allowed but the square renders differently forever
-  and the entry is stamped "written late."
-- **Can you edit an entry after posting?** Yes — it's a wiki, and git keeps every version anyway.
-  Each entry links to its own revision history on GitHub.
-- **Can you delete one?** Suggestion: no delete, only "retract" — the page stays, the body is
-  struck through. Wikis don't memory-hole.
-- **Is there a minimum length?** A one-sentence day still counts. Zero words doesn't.
-- **What's the day boundary?** Needs a timezone. Midnight IST, presumably — and a grace period,
-  because writing at 1am about the day that just ended is the normal case, not the exception.
-  *Suggestion: the day ends at 4am local.* [OPEN Q2]
+## 15. Making it survive 365 days
 
-## 12. Ideas worth stealing from real wikis
+The failure mode is not technical. It's **day 40, when you're tired.**
 
-1. **Wikilinks + backlinks.** Write `[[Something]]` in an entry; the build resolves it to a link
-   and adds a *"What links here"* section to the target page. **This is the feature that makes it
-   a wiki instead of a blog**, and it's ~30 lines in the build script.
-2. **Wanted pages.** Every `[[link]]` to a page that doesn't exist yet gets listed at `/wanted`.
-   You've just built a writing-prompt generator out of your own unfinished thoughts.
-   This might be the best idea in this document.
-3. **Stub notice.** A page that's under ~50 words renders *"This entry is a stub."* Honest, and
-   the same joke Wikipedia has been making for 25 years.
-4. **Revision history.** Every entry footer: "Last edited on X · view all revisions" → GitHub.
-5. **`[edit]` links per section** that deep-link into `/write` with that entry loaded.
-6. **Talk pages.** `/talk/<entry>` — where you argue with your own past position.
-   The most honest thing a personal site can contain.
-7. **Disambiguation joke.** `/shaan` → "Shaan may refer to:"
-8. **Citations.** Claims about your own life footnoted to the commit, tweet, or receipt that
-   proves them. Turns autobiography into something falsifiable.
+- Phone-first editor, one textarea, nothing in the way.
+- Autosave every keystroke. Non-negotiable.
+- One tap for the gym tick, no editor required.
+- PWA icon on the home screen.
+- **A nightly nudge** — a GitHub Action cron that pings you at 9pm if nothing's written yet.
+  Unglamorous, and probably the highest-leverage feature in this document. **[OPEN Q9]**
+- Never show a spinner. The entry appears saved instantly and syncs behind you.
 
-## 13. Vanilla-platform tricks this design gets to use
+## 16. Non-goals
 
-- `popover` + `anchor-name` / `position-area` → Wikipedia-style hover previews on wikilinks.
-  **Zero JS.** This is the "how did you do that" feature.
-- `@view-transition` → a multi-page static site that navigates like an app, no router.
-- `<details>` / `:target` → collapsibles and panels with no script.
-- `content-visibility: auto` → the 365-entry archive page stays instant.
-- CSS counters → auto-numbered footnotes and sections.
-- `animation-timeline: view()` → reading progress bar, off the main thread.
-- `text-wrap: pretty` / `balance` → typography that fixes itself.
-- Print stylesheet → the year prints as a book. Genuinely worth doing at day 365.
-- Service worker → `/write` works offline on a plane and commits when you're back. [OPEN Q6]
-
-## 14. Things that make the project actually survive 365 days
-
-The failure mode isn't technical, it's **day 40, when you're tired and it's 11:40pm.**
-Design for that:
-
-- **The write page must be superb on a phone.** Most entries will be typed on a phone in bed.
-  This is the primary interface, not the desktop one.
-- **Autosave to localStorage on every keystroke.** Never lose a draft. Non-negotiable.
-- **One tap for the gym tick.** Ideally without opening the editor at all.
-- **Installable as a PWA** so it's an icon on the home screen, not a bookmark.
-- **A nightly nudge.** A GitHub Action cron at 9pm that pings you if nothing's written yet —
-  email, or a push notification. Unglamorous, and probably the highest-leverage feature here. [OPEN Q5]
-- **Never show a spinner.** Optimistic UI: the entry appears saved instantly, syncs behind you.
-
-## 15. Non-goals
-
-- No comments, no likes, no share buttons, no analytics dashboard.
+- No comments, likes, share buttons, or analytics.
 - No CMS, no admin panel, no database of record.
 - No cookie banner, because there'll be nothing to consent to.
 - No colour. Not even one accent. Not even for links.
-- No JS required to *read* anything.
-- No dependencies. No npm at runtime, no CDN, no webfont fetch.
+- No JS required to read anything.
+- No dependencies, no CDN, no webfonts.
+- No hero section, no scroll-jacking, no CTA.
 
-## 16. Budget
+## 17. Budget
 
-- Home page: **under 20 KB** total, including inlined CSS. One request to first paint.
-- Entry page: under 15 KB.
-- Archive page (365 entries listed): under 60 KB.
-- Every page must be usable on 3G and readable with JS disabled.
+- Home page **under 20 KB** including inlined CSS, one request to first paint.
+- Entry page under 15 KB. Archive page under 60 KB.
+- Usable on 3G, readable with JS off, legible on e-ink.
 - Footer flexes it: *"This page is 11.4 KB and made 1 request."*
 
 ---
 
-## 17. Open questions **[OPEN]**
+## 18. Open questions **[OPEN]**
 
-**Q1 — Public or private?**
-Is the writing public from day one, or is this a private journal that only you read?
-This changes almost everything: tone, whether the repo is public, whether Pages needs a paid plan,
-and whether entries need a `private: true` flag to stay out of the build.
+**Q1 — Which Kindle?** Model and roughly what year. A 2023 Scribe and a 2014 Paperwhite are
+completely different browsers, and it decides how much of the modern CSS survives. If it's an older
+one, TLS may fail before we even get to layout — worth you trying to load any HTTPS site on it now
+and telling me what happens. *This is the highest-value thing you can check today.*
 
-**Q2 — Timezone and day boundary.**
-IST, presumably? And when does a day end — midnight, or ~4am so that late-night writing counts
-for the day it's about?
+**Q2 — Kindle: read-only, or write there too?** My recommendation is read-only, with `/write`
+degrading enough to work in a pinch. (§6)
 
-**Q3 — The rules.** Backfilling missed days: allowed, forbidden, or allowed-but-marked?
-(See §11 for the full set — this is the one that matters most.)
+**Q3 — The grid.** Mockup is in `mockups/gym-grid.html`. Open it on the phone and the Kindle.
+Does the full-year view hold up, or do you want month blocks?
 
-**Q4 — What do you write?**
-Freeform whatever-comes, or a fixed shape (a thought, a thing learned, a log)? Fixed shapes are
-easier to sustain on a bad day; freeform is better on a good one. Also: rough length target —
-a paragraph, or a page? This determines whether the archive reads as notes or as essays.
+**Q4 — The one-time token paste per device.** Fine? (§4a) If it bothers you, the Cloudflare Worker
+route gives you a true password-only login — it's ~40 lines and free, and it's the one thing I'd
+still nudge you toward.
 
-**Q5 — Do you want the 9pm nudge?** And by email, push, or not at all?
+**Q5 — Timezone and day boundary.** IST? And does the day end at midnight or ~4am?
 
-**Q6 — Offline writing.** Worth building the service worker so `/write` works with no signal,
-or is "you'll have wifi" a safe assumption?
+**Q6 — Where does Day 1 start?** Registration day was 29 July — which means under a no-backfill
+rule, **days 1 and 2 are already permanent gaps before you've written a word.** Options: (a) Day 1
+is 29 July and you start with two holes, which is either honest or demoralising; (b) Day 1 is your
+first entry and the countdown just tracks the domain separately. *This needs answering before the
+first entry, so it's the most time-sensitive question here.*
 
-**Q7 — One combined grid (four states) or two separate grids?** (§9)
+**Q7 — Images at all?** Dithered photos inside entries, or strictly text forever?
 
-**Q8 — Countdown: days only, or a live ticking clock with seconds?** (§10)
+**Q8 — Does the gym tick follow the no-backfill rule?** (§13)
 
-**Q9 — Any images at all?** A dithered photo of you in an infobox, images inside entries,
-or is this strictly a text-only site forever?
+**Q9 — The 9pm nudge?** Email, push, or none.
 
-**Q10 — What happens on day 365?** Renew, freeze, or let it die. (§10)
+**Q10 — What happens on day 365?** Renew, freeze, or let it die. (§12)
 
-**Q11 — Hosting.** Recommended: **Cloudflare Pages + a Cloudflare Worker**, with GitHub as the
-archive. It's free, it handles a private repo without a paid plan, and the Worker and the site
-live in one place. The alternative is GitHub Pages + a Worker, which means two dashboards.
-Either way, you'll need to point `shaan.wiki` off Spaceship's parking nameservers. Any preference,
-or do you want me to pick?
-
-**Q12 — Does the gym tick need a history edit?** i.e. if you forget to tick on Tuesday,
-can you fix it on Wednesday? (Same philosophical question as Q3, smaller stakes.)
+**Q11 — What are you actually writing?** Freeform, or a fixed shape (a thought / a thing learned /
+a log)? And rough length — a paragraph or a page? Fixed shapes are far easier to sustain on a bad
+day. This determines whether the archive reads as notes or as essays, and it changes the editor.
 
 ---
 
-## 18. Parking lot
+## 19. Parking lot
 
 - Word-count bar chart across the year — a monochrome skyline of how much you wrote each day.
-- Total stats in the footer: words written, days elapsed, longest streak, gym percentage.
+- Footer stats: words written, days elapsed, longest streak, gym percentage.
 - `curl shaan.wiki` returns a nicely formatted plain-text version. Because it should.
-- Schema.org `Person` JSON-LD — a wiki about a person that machines can read.
 - `/api/shaan.json` — the whole archive as structured data.
 - A "year in review" page auto-generated on day 365.
 - Full-text search over the archive, `/` to focus, from a generated index.
-- Export the year as a single PDF laid out for print.
+- Print stylesheet — the year prints as a book. Genuinely worth doing at day 365.
+- Send each entry to the Kindle by email as it's written, so the archive lands in your library too.
