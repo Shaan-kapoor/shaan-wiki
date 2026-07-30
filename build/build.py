@@ -440,7 +440,13 @@ def main():
     vault = os.path.join(ROOT, "data", "vault.json")
     if os.path.exists(vault):
         shutil.copy(vault, os.path.join(OUT, "vault.json"))
-    write("CNAME", SITE + "\n")
+    # Only claim the custom domain once DNS actually points at GitHub. A CNAME
+    # file makes Pages redirect the github.io URL to shaan.wiki, so shipping it
+    # early makes the site unreachable at both addresses. Create data/domain.txt
+    # containing the domain when the nameservers are ready.
+    domain = os.path.join(ROOT, "data", "domain.txt")
+    if os.path.exists(domain):
+        write("CNAME", read(domain).strip() + "\n")
     write(".nojekyll", "")
 
     print("built %d entries, %d pages, %.1f KB"
