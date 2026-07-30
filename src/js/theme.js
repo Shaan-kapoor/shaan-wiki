@@ -1,14 +1,30 @@
-/* The theme does not snap. It is wiped in as a circle growing from the button
- * that was pressed, so the change has a direction and an origin.
+/* The theme does not snap, and it does not fade.
+ *
+ * The new theme comes down over the old one as a straight edge, tilted so the
+ * right side leads. It starts at the top right corner, where the button is,
+ * and sweeps to the bottom left. Slow enough to watch: 900ms, near constant
+ * speed, easing out only at the very end so it settles rather than stops.
  */
 (function () {
   "use strict";
   var btn = document.getElementById("theme");
   if (!btn) return;
 
+  var LEAN = 26;      // % the right edge leads the left by. The tilt.
+  var MS = 900;
+
   function apply(next) {
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("shaan.wiki:theme", next); } catch (e) {}
+  }
+
+  // The covered region is everything above a tilted line. At p the right edge
+  // sits at p*(100+LEAN) and the left edge trails it by LEAN, so at p=0 nothing
+  // is covered and at p=1 even the bottom left corner is.
+  function edge(p) {
+    var right = p * (100 + LEAN);
+    return "polygon(0% 0%, 100% 0%, 100% " + right.toFixed(2) + "%, 0% " +
+      (right - LEAN).toFixed(2) + "%)";
   }
 
   btn.addEventListener("click", function () {
@@ -17,18 +33,11 @@
 
     if (still || !document.startViewTransition) { apply(next); return; }
 
-    var r = btn.getBoundingClientRect();
-    var x = r.left + r.width / 2;
-    var y = r.top + r.height / 2;
-    // far enough to cover the furthest corner from the button
-    var reach = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
-
     document.startViewTransition(function () { apply(next); })
       .ready.then(function () {
         document.documentElement.animate(
-          { clipPath: ["circle(0px at " + x + "px " + y + "px)",
-                       "circle(" + reach + "px at " + x + "px " + y + "px)"] },
-          { duration: 520, easing: "cubic-bezier(.4,0,.2,1)",
+          { clipPath: [edge(0), edge(0.5), edge(1)] },
+          { duration: MS, easing: "cubic-bezier(.25,0,.15,1)",
             pseudoElement: "::view-transition-new(root)" });
       });
   });
