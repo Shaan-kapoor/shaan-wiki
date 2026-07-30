@@ -42,12 +42,42 @@ from git history.
 
 ## Setup, once
 
-1. Create a fine-grained GitHub token: repository access limited to this repo,
-   permissions `Contents: Read and write`, expiry 366 days (one day longer than the domain).
+### 1. DNS — the only thing blocking the site going live
+
+`shaan.wiki` is still on Spaceship's parking nameservers. Until it points at GitHub, the site is
+unreachable: this account's Pages sites all redirect to `shaankapoor.me` (set as the custom domain
+on `Shaan-kapoor.github.io`), and that domain has no DNS records at all, so every project page
+301s into a dead end. Giving this repo its own custom domain bypasses that entirely.
+
+At Spaceship, on `shaan.wiki`, add four **A** records for the apex (`@`):
+
+```
+185.199.108.153
+185.199.109.153
+185.199.110.153
+185.199.111.153
+```
+
+and optionally a **CNAME** for `www` → `shaan-kapoor.github.io`.
+
+Then:
+
+```
+echo shaan.wiki > data/domain.txt && git add -A && git commit -m "Claim the domain" && git push
+```
+
+and set the custom domain under Settings → Pages. Tick **Enforce HTTPS** once the certificate
+is issued (a few minutes).
+
+### 2. The token
+
+1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**.
+   Repository access: only this repo. Permissions: `Contents: Read and write`, nothing else.
+   Expiry: the maximum, 366 days — one day longer than the domain, so it never needs rotating.
 2. Open `tools/make-vault.html` **locally** in a browser. Paste the token and a password.
 3. Save the output as `data/vault.json` and commit it.
-4. Settings → Pages → Source: **GitHub Actions**.
-5. Point the domain's DNS at GitHub Pages.
+
+Pages is already enabled with **GitHub Actions** as the source, and the deploy workflow is green.
 
 ## Building locally
 
