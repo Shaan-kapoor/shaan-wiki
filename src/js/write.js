@@ -55,8 +55,22 @@
       "\n---\n\n" + $("body").value.trim() + "\n";
   }
 
-  SW.autoUnlock($("pw"), open, function (s) {
-    $("gate").dataset.state = s || "";
+  SW.autoUnlock($("pw"), open, function (st) {
+    var gate = $("gate");
+    gate.dataset.state = st || "";
+    if (st === "novault") { $("gatemsg").textContent = "no vault.json"; return; }
+    if (st === "") {
+      $("gatemsg").textContent = "";
+      gate.classList.remove("wrong");
+      void gate.offsetWidth;          // restart the animation
+      gate.classList.add("wrong");
+    } else {
+      $("gatemsg").textContent = "";
+    }
+  });
+
+  SW.hasVault().then(function (ok) {
+    if (!ok) $("gatemsg").textContent = "no vault.json";
   });
 
   async function open() {
@@ -117,13 +131,11 @@
   $("gym").addEventListener("click", async function () {
     var on = this.getAttribute("aria-pressed") !== "true";
     this.setAttribute("aria-pressed", on ? "true" : "false");
+    SW.localSet(on);
     saveDraft();
     try {
       await SW.setGym(on);
-      say(on ? "gym marked" : "gym cleared");
-    } catch (e) {
-      say("gym not saved", true);
-    }
+    } catch (e) { /* held locally, flushed on the next load */ }
   });
 
   $("pub").addEventListener("click", async function () {

@@ -1,8 +1,8 @@
 /* One tap to mark today.
  *
- * No password here. The token is unlocked once per device on /write and kept,
- * so marking attendance is a tap and nothing else. The tick flips instantly and
- * the commit happens behind it; if the commit fails the tick goes back.
+ * Local-first: the tick lands immediately in localStorage and is pushed to
+ * GitHub whenever a token is available. It never waits on a network, never
+ * asks for a password, and never sends you somewhere else to do it.
  */
 (function () {
   "use strict";
@@ -12,24 +12,24 @@
 
   function paint(on) { mark.setAttribute("aria-pressed", on ? "true" : "false"); }
 
+  var local = SW.localGet();
+  if (local !== null) paint(local);
+
   if (SW.cached()) {
-    SW.getGym().then(paint).catch(function () {});
+    SW.flush()
+      .then(function (pushed) { if (!pushed) return SW.getGym().then(function (r) {
+        if (SW.localGet() === null) { paint(r); SW.localSet(r); }
+      }); })
+      .catch(function () {});
   }
 
-  var busy = false;
-  mark.addEventListener("click", async function () {
-    if (busy) return;
+  mark.addEventListener("click", function () {
     var on = mark.getAttribute("aria-pressed") !== "true";
     paint(on);
+    SW.localSet(on);
     if (navigator.vibrate) navigator.vibrate(on ? 14 : 8);
-
-    if (!SW.cached()) { paint(!on); location.href = "/write/"; return; }
-    busy = true;
-    try {
-      await SW.setGym(on);
-    } catch (e) {
-      paint(!on);
+    if (SW.cached()) {
+      SW.setGym(on).catch(function () { /* stays local, flushed next load */ });
     }
-    busy = false;
   });
 })();

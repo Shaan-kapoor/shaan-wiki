@@ -95,6 +95,45 @@ window.SW = (function () {
     return !!JSON.parse(decode(cur.content))[isoDate(todayIST())];
   }
 
+  /* Local-first. The tick is a physical act and must never wait on a network,
+     a token, or a password. It lands locally straight away and is pushed to
+     GitHub when a token is available, which may be immediately or may be after
+     the first unlock on this device. */
+  var LKEY = "shaan.wiki:gym";
+  function localAll() {
+    try { return JSON.parse(localStorage.getItem(LKEY) || "{}"); }
+    catch (e) { return {}; }
+  }
+  function localGet() {
+    var v = localAll()[isoDate(todayIST())];
+    return v === undefined ? null : !!v;
+  }
+  function localSet(on) {
+    var all = localAll();
+    all[isoDate(todayIST())] = !!on;
+    try { localStorage.setItem(LKEY, JSON.stringify(all)); } catch (e) {}
+  }
+
+  /* Push anything held locally that GitHub has not got yet. Runs on load. */
+  async function flush() {
+    if (!token) return false;
+    var pending = localAll();
+    var keys = Object.keys(pending);
+    if (!keys.length) return false;
+    var cur = await gh("data/gym.json");
+    var data = cur ? JSON.parse(decode(cur.content)) : {};
+    var dirty = false;
+    keys.forEach(function (k) {
+      if (data[k] !== pending[k]) { data[k] = pending[k]; dirty = true; }
+    });
+    if (!dirty) return false;
+    var sorted = {};
+    Object.keys(data).sort().forEach(function (k) { sorted[k] = data[k]; });
+    await put("data/gym.json", JSON.stringify(sorted, null, 2) + "\n",
+      "Gym " + keys.join(" "), cur ? cur.sha : null);
+    return true;
+  }
+
   /* Auto-unlock: the password is accepted the moment it is fully typed, with no
      Enter. Deriving the key costs real time by design, so attempts are debounced
      and stale ones are discarded rather than fired on every keystroke. */
@@ -126,6 +165,12 @@ window.SW = (function () {
   return {
     unlock: unlock, autoUnlock: autoUnlock, gh: gh, put: put, decode: decode,
     setGym: setGym, getGym: getGym, todayIST: todayIST, isoDate: isoDate,
+    localGet: localGet, localSet: localSet, flush: flush,
+    hasVault: function () {
+      return fetch("/vault.json", { method: "HEAD" }).then(function (r) {
+        return r.ok;
+      }).catch(function () { return false; });
+    },
     cached: function () {
       try {
         token = localStorage.getItem("shaan.wiki:token") ||

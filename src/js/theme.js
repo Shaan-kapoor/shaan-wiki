@@ -10,22 +10,20 @@
   var btn = document.getElementById("theme");
   if (!btn) return;
 
-  var LEAN = 26;      // % the right edge leads the left by. The tilt.
-  var MS = 900;
+  var MS = 1000;
 
   function apply(next) {
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("shaan.wiki:theme", next); } catch (e) {}
   }
 
-  // The covered region is everything above a tilted line. At p the right edge
-  // sits at p*(100+LEAN) and the left edge trails it by LEAN, so at p=0 nothing
-  // is covered and at p=1 even the bottom left corner is.
-  function edge(p) {
-    var right = p * (100 + LEAN);
-    return "polygon(0% 0%, 100% 0%, 100% " + right.toFixed(2) + "%, 0% " +
-      (right - LEAN).toFixed(2) + "%)";
-  }
+  /* The mask is 250% of the page tall and its soft band occupies the 32% to 44%
+     stops, which is about a third of a page height. At 73.33% the whole band
+     sits above the page and nothing of the new theme shows; at -13.33% it has
+     passed below and the page is fully covered. Sliding between the two walks
+     the band down. A wider feather washes the whole page grey at the midpoint,
+     which reads as a fault rather than as light. */
+  var FROM = "0% 73.33%", TO = "0% -13.33%";
 
   btn.addEventListener("click", function () {
     var next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
@@ -36,8 +34,8 @@
     document.startViewTransition(function () { apply(next); })
       .ready.then(function () {
         document.documentElement.animate(
-          { clipPath: [edge(0), edge(0.5), edge(1)] },
-          { duration: MS, easing: "cubic-bezier(.25,0,.15,1)",
+          { maskPosition: [FROM, TO], WebkitMaskPosition: [FROM, TO] },
+          { duration: MS, easing: "cubic-bezier(.22,0,.18,1)",
             pseudoElement: "::view-transition-new(root)" });
       });
   });

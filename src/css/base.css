@@ -322,10 +322,27 @@ ul.arch a { font-size: 15px; }
 /* The default cross-fade is suppressed so the new theme can be wiped in as a
    circle growing from the toggle. Without this the two roots fade through a
    grey midpoint, which in a black-and-white system looks like a fault. */
-::view-transition-old(root) { animation: none; }
-::view-transition-new(root) { animation: none; mix-blend-mode: normal; }
-::view-transition-old(root) { z-index: 0; }
-::view-transition-new(root) { z-index: 1; }
+::view-transition-old(root) { animation: none; z-index: 0; }
+::view-transition-new(root) {
+  animation: none; mix-blend-mode: normal; z-index: 1;
+  /* A gradient mask rather than a clip path, so the edge is a band of light
+     passing down the page rather than a line drawn across it. Tilted a few
+     degrees so the right side, where the button is, leads. The mask box is
+     2.5x the page so the band can start and finish entirely offscreen. */
+  -webkit-mask-image: linear-gradient(172deg, #000 0%, #000 32%, rgba(0,0,0,.62) 37%, rgba(0,0,0,.18) 41%, transparent 44%);
+  mask-image: linear-gradient(172deg, #000 0%, #000 32%, rgba(0,0,0,.62) 37%, rgba(0,0,0,.18) 41%, transparent 44%);
+  -webkit-mask-size: 100% 250%;  mask-size: 100% 250%;
+  -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
+}
+
+/* the gate shakes rather than saying "wrong password" */
+.gate.wrong #pw { animation: nudge .34s cubic-bezier(.36,.07,.19,.97); }
+@keyframes nudge {
+  0%,100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  45% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+}
 
 /* ---- intro ------------------------------------------------------------- */
 .intro {
