@@ -1,0 +1,50 @@
+{{> components/head.html }}
+{{> components/masthead.html }}
+
+<h1>Write</h1>
+<p class="dateline" id="dateline">Today &middot; Indian Standard Time</p>
+
+<div id="lock">
+  <form class="editor" id="unlock">
+    <label class="field">Password
+      <input type="password" id="pw" autocomplete="current-password"
+             autocapitalize="off" autocorrect="off" spellcheck="false" required>
+    </label>
+    <div class="row">
+      <span class="meta" id="lockmsg">One password. Every device. No setup.</span>
+      <button class="primary" type="submit">Unlock</button>
+    </div>
+  </form>
+</div>
+
+<div id="editor" hidden>
+  <form class="editor" id="entry">
+    <label class="field">Title
+      <input type="text" id="title" autocomplete="off" spellcheck="false"
+             placeholder="Becomes the URL">
+    </label>
+    <label class="field">Entry
+      <textarea id="body" placeholder="Write." spellcheck="true"></textarea>
+    </label>
+    <div class="row">
+      <label class="tick">
+        <input type="checkbox" id="gym"> Went to the gym today
+      </label>
+      <span class="meta" id="count">0 words</span>
+    </div>
+    <div class="row">
+      <span class="meta" id="status">Draft saved on this device.</span>
+      <button class="primary" type="submit" id="publish">Publish</button>
+    </div>
+  </form>
+  <p class="meta" id="urlhint"></p>
+</div>
+
+<h2>The rule</h2>
+<p class="meta">
+  Editable until midnight IST, then sealed forever. Missed days cannot be
+  filled in later.
+</p>
+
+{{> components/footer.html }}
+<script src="/js/write.js" defer></script>
