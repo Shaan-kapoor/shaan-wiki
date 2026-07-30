@@ -47,7 +47,7 @@ window.SW = (function () {
     var out = await crypto.subtle.decrypt({ name: "AES-GCM", iv: bytes(vault.iv) },
       key, bytes(vault.ct));
     token = new TextDecoder().decode(out).trim();
-    try { sessionStorage.setItem("shaan.wiki:token", token); } catch (e) {}
+    try { localStorage.setItem("shaan.wiki:token", token); } catch (e) {}
     return token;
   }
 
@@ -127,7 +127,10 @@ window.SW = (function () {
     unlock: unlock, autoUnlock: autoUnlock, gh: gh, put: put, decode: decode,
     setGym: setGym, getGym: getGym, todayIST: todayIST, isoDate: isoDate,
     cached: function () {
-      try { token = sessionStorage.getItem("shaan.wiki:token"); } catch (e) {}
+      try {
+        token = localStorage.getItem("shaan.wiki:token") ||
+                sessionStorage.getItem("shaan.wiki:token");
+      } catch (e) {}
       return token;
     },
     dayNumber: function () {
