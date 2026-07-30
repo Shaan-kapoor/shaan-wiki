@@ -21,12 +21,13 @@ IST = timezone(timedelta(hours=5, minutes=30))
 DAY_ONE = date(2026, 8, 1)
 DAY_COUNT = 365
 LAST_DAY = DAY_ONE + timedelta(days=DAY_COUNT - 1)          # 2027-07-31
-EXPIRY = datetime(2027, 7, 29, 19, 48, 39, tzinfo=timezone.utc)
 SITE = "shaan.wiki"
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "src")
-OUT = os.path.join(ROOT, "public")
+# SHAAN_OUT and SHAAN_TODAY exist so a populated preview can be built without
+# touching the real archive. Neither is set in CI.
+OUT = os.environ.get("SHAAN_OUT") or os.path.join(ROOT, "public")
 
 MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
           "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -34,6 +35,9 @@ WD = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 
 
 def today_ist():
+    override = os.environ.get("SHAAN_TODAY")
+    if override:
+        return datetime.strptime(override, "%Y-%m-%d").date()
     return datetime.now(IST).date()
 
 
@@ -197,60 +201,39 @@ def write(relpath, content):
 
 
 # --- the grid ----------------------------------------------------------------
-def grid(marks, today, label):
-    """53x7 table. marks is a set of dates. Weeks are columns, Mon..Sun rows."""
+def grid(marks, today):
+    """A year as 53 columns of 7 days.
+
+    CSS Grid, emitted in column-major order so grid-auto-flow:column lays it
+    out as weeks. Not a table: a table treats cell width and height as
+    suggestions and will stretch them to fill the row, which is why the
+    squares were never square. Here aspect-ratio guarantees the geometry and
+    gap guarantees the air.
+
+    No borders on cells — an outlined empty square spends ink on a day that
+    didn't happen. Three states, luminance only: presence is light.
+    """
     start = DAY_ONE - timedelta(days=DAY_ONE.weekday())
-    weeks = []
+    cells = []
     d = start
     while d <= LAST_DAY:
-        weeks.append(d)
-        d += timedelta(days=7)
-
-    spans, prev, count = [], None, 0
-    for w in weeks:
-        m = (w + timedelta(days=3)).month
-        if m != prev:
-            if prev is not None:
-                spans.append((prev, count))
-            prev, count = m, 1
-        else:
-            count += 1
-    spans.append((prev, count))
-
-    head = '<tr><th class="wd"></th>'
-    for m, n in spans:
-        head += '<th class="mo" colspan="%d">%s</th>' % (n, MONTHS[m - 1] if n >= 2 else "")
-    head += "</tr>"
-
-    rows = ""
-    for r in range(7):
-        rows += '<tr><th class="wd">%s</th>' % (WD[r] if r in (0, 2, 4) else "")
-        for w in weeks:
-            cd = w + timedelta(days=r)
-            # Byte-golfed on purpose: this runs 371 times per grid and twice
-            # per page. Unclassed <td> is a future day, which is most of the
-            # year at the start. Tooltips are dropped — there is no hover on
-            # a phone or an e-ink screen, and they cost 26 KB.
+        for r in range(7):
+            cd = d + timedelta(days=r)
             if cd < DAY_ONE or cd > LAST_DAY:
-                rows += "<td class=x></td>"
+                cells.append("<i></i>")
             elif cd == today:
-                rows += '<td class="%s t"></td>' % ("y" if cd in marks else "n")
+                cells.append('<i class="%s t"></i>' % ("y" if cd in marks else "n"))
             elif cd > today:
-                rows += "<td></td>"
+                cells.append("<i></i>")
             else:
-                rows += "<td class=%s></td>" % ("y" if cd in marks else "n")
-        rows += "</tr>"
-
-    return ('<figure class="gridwrap"><figcaption>%s</figcaption>'
-            '<table class="grid">%s%s</table></figure>' % (label, head, rows))
+                cells.append("<i class=%s></i>" % ("y" if cd in marks else "n"))
+        d += timedelta(days=7)
+    return '<div class="year">%s</div>' % "".join(cells)
 
 
 def streaks(marks, today):
+    # A streak survives today being unwritten — the day isn't over yet.
     cur = 0
-    d = today
-    while d >= DAY_ONE and d not in marks:      # today not yet done doesn't break it
-        d -= timedelta(days=1)
-        break
     d = today if today in marks else today - timedelta(days=1)
     while d >= DAY_ONE and d in marks:
         cur += 1
@@ -267,7 +250,7 @@ def streaks(marks, today):
 # --- load --------------------------------------------------------------------
 def load_entries():
     entries = []
-    edir = os.path.join(ROOT, "entries")
+    edir = os.environ.get("SHAAN_ENTRIES") or os.path.join(ROOT, "entries")
     for name in sorted(os.listdir(edir)):
         if not name.endswith(".md"):
             continue
@@ -293,7 +276,7 @@ def load_entries():
 
 
 def load_gym():
-    path = os.path.join(ROOT, "data", "gym.json")
+    path = os.environ.get("SHAAN_GYM") or os.path.join(ROOT, "data", "gym.json")
     if not os.path.exists(path):
         return set()
     with open(path, encoding="utf-8") as f:
@@ -322,17 +305,14 @@ def main():
 
     css = minify_css(read(os.path.join(SRC, "css", "base.css")))
     dnum = day_number(today) or (0 if today < DAY_ONE else DAY_COUNT)
-    remaining = max((EXPIRY - datetime.now(timezone.utc)).days, 0)
 
+    # No countdown anywhere on the site. The finitude is already visible in
+    # 365 slots; narrating it puts a clock in the furniture.
     base = {
         "site": SITE,
         "css": css,
-        "day": "%03d" % dnum,
-        "day_plain": str(dnum),
+        "day": str(dnum),
         "day_count": str(DAY_COUNT),
-        "remaining": str(remaining),
-        "expiry_iso": EXPIRY.isoformat(),
-        "year": str(today.year),
         "entry_count": str(len(entries)),
         "gym_count": str(len([d for d in gym_days if d <= today])),
         "elapsed": str(max(dnum, 0)),
@@ -344,8 +324,8 @@ def main():
     base.update({
         "gym_streak": str(gcur), "gym_longest": str(glong),
         "write_streak": str(wcur), "write_longest": str(wlong),
-        "gym_grid": grid(gym_days, today, "Gym"),
-        "write_grid": grid(written, today, "Writing"),
+        "gym_grid": grid(gym_days, today),
+        "write_grid": grid(written, today),
     })
 
     pages = os.path.join(SRC, "pages")
@@ -365,12 +345,9 @@ def main():
             "slug": e["slug"],
             "body": bodyhtml,
             "entry_day": str(e["day"]),
-            "entry_date": e["date"].strftime("%A, %-d %B %Y"),
+            "entry_date": e["date"].strftime("%-d %B %Y").lower(),
             "entry_date_iso": e["date"].isoformat(),
             "words": str(e["words"]),
-            "gym_line": "Went to the gym." if e["gym"] else "No gym.",
-            "stub": ('<p class="stub">This entry is a stub.</p>'
-                     if e["words"] < 50 else ""),
         })
         total += write("%s/index.html" % e["slug"],
                        render(read(os.path.join(pages, "entry.html")), ctx))
@@ -381,11 +358,10 @@ def main():
     # index
     recent = entries[-12:][::-1]
     items = "".join(
-        '<li><a href="/%s/">%s</a><span class="meta">Day %d &middot; %s</span></li>'
-        % (e["slug"], html.escape(e["title"]), e["day"],
-           e["date"].strftime("%-d %b")) for e in recent)
+        '<li><a href="/%s/">%s</a><span class="n">%d</span></li>'
+        % (e["slug"], html.escape(e["title"]), e["day"]) for e in recent)
     ctx = dict(base, title=SITE, recent=items or
-               '<li class="empty">Nothing written yet.</li>')
+               '<li class="empty">&mdash;</li>')
     total += write("index.html", render(read(os.path.join(pages, "index.html")), ctx))
 
     # archive
@@ -396,11 +372,10 @@ def main():
         if e:
             cell = '<a href="/%s/">%s</a>' % (e["slug"], html.escape(e["title"]))
         elif d > today:
-            cell = '<span class="future">&mdash;</span>'
+            cell = '<span class="miss">&nbsp;</span>'
         else:
-            cell = '<span class="miss">missed</span>'
-        rows += '<tr><td class="n">%d</td><td class="d">%s</td><td>%s</td></tr>' % (
-            n, d.strftime("%-d %b"), cell)
+            cell = '<span class="miss">&mdash;</span>'
+        rows += '<li><span class="n">%d</span>%s</li>' % (n, cell)
     ctx = dict(base, title="Archive", rows=rows)
     total += write("archive/index.html",
                    render(read(os.path.join(pages, "archive.html")), ctx))
@@ -414,14 +389,10 @@ def main():
     total += write("gym/index.html", render(read(os.path.join(pages, "gym.html")), ctx))
 
     # wanted
-    witems = "".join(
-        '<li><b>%s</b> &mdash; linked from %s</li>' % (
-            html.escape(t), ", ".join('<a href="/%s/">%s</a>'
-                                      % (e["slug"], html.escape(e["title"]))
-                                      for e in es))
-        for t, es in sorted(wanted.items()))
+    witems = "".join('<li><a href="/write/">%s</a></li>' % html.escape(t)
+                     for t in sorted(wanted))
     ctx = dict(base, title="Wanted", items=witems or
-               '<li class="empty">Nothing wanted yet.</li>')
+               '<li class="empty">&mdash;</li>')
     total += write("wanted/index.html",
                    render(read(os.path.join(pages, "wanted.html")), ctx))
 
@@ -431,11 +402,11 @@ def main():
         total += write(out, render(read(os.path.join(pages, name)), ctx))
 
     # static
-    for sub in ("js",):
-        srcdir = os.path.join(SRC, sub)
-        for f in os.listdir(srcdir):
-            total += write("%s/%s" % (sub, f), read(os.path.join(srcdir, f)))
-    shutil.copy(os.path.join(ROOT, "data", "gym.json"),
+    srcdir = os.path.join(SRC, "js")
+    for f in sorted(os.listdir(srcdir)):
+        total += write("js/" + f, read(os.path.join(srcdir, f)))
+    shutil.copy(os.environ.get("SHAAN_GYM") or
+                os.path.join(ROOT, "data", "gym.json"),
                 os.path.join(OUT, "gym.json"))
     vault = os.path.join(ROOT, "data", "vault.json")
     if os.path.exists(vault):
@@ -451,7 +422,7 @@ def main():
 
     print("built %d entries, %d pages, %.1f KB"
           % (len(entries), len(os.listdir(OUT)), total / 1024.0))
-    print("day %d of %d, %d days until the domain expires" % (dnum, DAY_COUNT, remaining))
+    print("day %d of %d" % (dnum, DAY_COUNT))
 
 
 if __name__ == "__main__":

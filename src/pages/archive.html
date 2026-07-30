@@ -1,9 +1,6 @@
 {{> components/head.html }}
-{{> components/masthead.html }}
+{{> components/nav.html }}
 
-<h1>Archive</h1>
-<p class="dateline">All {{ day_count }} days &middot; {{ entry_count }} written</p>
+<ul class="arch">{{ rows }}</ul>
 
-<table class="archive">{{ rows }}</table>
-
-{{> components/footer.html }}
+{{> components/foot.html }}

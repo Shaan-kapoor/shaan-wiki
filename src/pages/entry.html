@@ -1,20 +1,10 @@
 {{> components/head.html }}
-{{> components/masthead.html }}
+{{> components/nav.html }}
 
 <article>
   <h1>{{ title }}</h1>
-  <p class="dateline">
-    Day {{ entry_day }} &middot; {{ entry_date }} &middot;
-    {{ words }} words &middot; {{ gym_line }}
-  </p>
-  {{ stub }}
+  <p class="dateline meta">{{ entry_day }} &nbsp; {{ entry_date }}</p>
   {{ body }}
 </article>
 
-<h2>This entry</h2>
-<p class="meta">
-  Sealed at midnight IST on {{ entry_date }} and unchanged since.
-  <a href="/{{ slug }}.txt">Plain text</a>
-</p>
-
-{{> components/footer.html }}
+{{> components/foot.html }}

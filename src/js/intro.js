@@ -31,13 +31,11 @@
   overlay.className = "intro";
   overlay.setAttribute("aria-hidden", "true");
 
+  // One child only. The overlay is a centring grid, so a second element
+  // would become a second row and knock the field off centre.
   var canvas = document.createElement("canvas");
   canvas.className = "intro-canvas";
-  var mark = document.createElement("span");
-  mark.className = "intro-mark";
-  mark.textContent = "shaan.wiki";
   overlay.appendChild(canvas);
-  overlay.appendChild(mark);
   document.body.appendChild(overlay);
 
   var ctx = canvas.getContext("2d");

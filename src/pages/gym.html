@@ -1,12 +1,9 @@
 {{> components/head.html }}
-{{> components/masthead.html }}
+{{> components/nav.html }}
 
-<h1>Gym</h1>
-<p class="dateline">One square a day. Sealed at midnight IST.</p>
+<div class="block">
+  {{ gym_grid }}
+  <p class="stat"><b>{{ gym_count }}</b>/{{ elapsed }} &nbsp; <b>{{ gym_streak }}</b> &nbsp; <b>{{ gym_longest }}</b></p>
+</div>
 
-{{> components/gym-grid-year.html }}
-
-<h2>Writing, for comparison</h2>
-{{> components/write-grid-year.html }}
-
-{{> components/footer.html }}
+{{> components/foot.html }}
