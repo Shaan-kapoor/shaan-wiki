@@ -287,6 +287,37 @@ home page with the full year on <code>/gym</code>.</p>
        variant_year(), LEGEND, variant_months(), LEGEND,
        variant_vertical(), variant_recent(), LEGEND)
 
+# --- the chosen design, on its own -------------------------------------------
+chosen = """<title>shaan.wiki — gym grid</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>%s</style>
+<div class="wrap">
+<h1>Gym</h1>
+<p class="stats"><b>%d</b> of %d days &middot; <b>%d%%</b> &middot;
+current streak <b>%d</b> &middot; longest <b>%d</b></p>
+%s
+%s
+<p class="note">Simulated data, pretending today is %s &mdash; day %d of 365.
+Static HTML: no JavaScript, no CSS Grid, no flexbox, no custom properties, no web
+fonts. A table, which is what a year of weekdays actually is.</p>
+
+<h2>Recent eight weeks</h2>
+<p class="note">The companion view for the home page &mdash; legible at arm's
+length on e-ink.</p>
+%s
+%s
+</div>
+""" % (CSS, went, elapsed, round(100 * went / elapsed), cur, longest,
+       variant_year(), LEGEND, TODAY.strftime("%-d %B %Y"), elapsed,
+       variant_recent(), LEGEND)
+
+import os
 import sys
-open(sys.argv[1], "w").write(html)
-print("wrote %s — %d days simulated, %d gym" % (sys.argv[1], elapsed, went))
+
+outdir = sys.argv[1] if len(sys.argv) > 1 else "mockups"
+targets = [("gym-grid-year.html", chosen), ("gym-grid-options.html", html)]
+for name, doc in targets:
+    path = os.path.join(outdir, name)
+    open(path, "w").write(doc)
+    print("wrote %-24s %5.1f KB" % (path, len(doc) / 1024.0))
+print("%d days simulated, %d gym (%d%%)" % (elapsed, went, round(100 * went / elapsed)))

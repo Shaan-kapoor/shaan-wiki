@@ -25,7 +25,7 @@ Registrar       Spaceship, Inc.
 Registered      2026-07-29 19:48:39 UTC
 Expires         2027-07-29 19:48:39 UTC   ← the countdown target
 Nameservers     launch1/launch2.spaceship.net  (parked — nothing served yet)
-Repo            github.com/Shaan-kapoor/shaan-wiki  (private for now, must go public)
+Repo            github.com/Shaan-kapoor/shaan-wiki  (private for now)
 ```
 
 GitHub rejects repo names ending in `.wiki`, hence `shaan-wiki`. Doesn't affect the domain.
@@ -35,219 +35,297 @@ GitHub rejects repo names ending in `.wiki`, hence `shaan-wiki`. Doesn't affect 
 | # | Decision | Consequence |
 |---|---|---|
 | 1 | Vanilla HTML/CSS/JS, no framework | No build tooling on Shaan's machine, ever |
-| 2 | **Black and white only** | No accent colour, not even for links |
+| 2 | Black and white only | No accent colour, not even for links |
 | 3 | Write from the site itself | After setup, no code editor is ever opened again |
 | 4 | One password | Not OAuth, not accounts |
 | 5 | Entries are plain text files | Git is the archive and the source of truth |
 | 6 | `shaan.wiki/<title>` | Title determines the URL |
 | 7 | Countdown to domain expiry | Real timestamp, on every page |
-| 8 | Gym tracker, binary tick | **Gym only. No writing grid.** |
-| 9 | **Public** — anyone can read | Repo goes public, GitHub Pages is free |
-| 10 | **Browser commits straight to GitHub** | No server, no Worker, no infrastructure |
-| 11 | **No backfilling.** A missed day stays missed | The grid is a record, not a to-do list |
-| 12 | **Mobile-first** — most writing happens on a phone | The phone is the primary interface, not the desktop |
-| 13 | **Must work on Kindle** | This is the hardest constraint in the project. See §6 |
+| 8 | Gym tracker, binary tick | Gym only. No writing grid |
+| 9 | Public — anyone can read | Repo goes public |
+| 10 | No backfilling | A missed day stays missed. The grid is a record |
+| 11 | Mobile-first | The phone is the primary writing device |
+| 12 | **Grid = full year, 53×7, GitHub's shape** | Built as a `<table>`. See §7 |
+| 13 | **Read _and_ write on Kindle** | The hardest constraint. It decides the architecture. See §5 |
+| 14 | **One HTML file per thing** | Components and pages are separate source files. See §6 |
+
+**Reopened:** #10 from the previous round — *browser commits straight to GitHub* — is off the
+table. Wanting to write from the Kindle kills it. See §4.
 
 ---
 
-## 4. Consequences of "browser commits straight to GitHub" + "public"
+## 4. The write path — options
 
-Two things follow that are worth understanding before we build.
+You asked what the options actually are. Here they are, and the Kindle decides between them.
 
-### 4a. The "one password" can't literally be one password
+### The thing that changes everything
 
-With no server, there's nobody to check a password against. The thing that actually authorises a
-write is a **GitHub token**, and on a public site that token can't be shipped in the code — the
-code is public, so an encrypted token blob in the repo could be cracked offline at leisure.
+An old Kindle browser may not have `fetch`, may have broken CORS, and almost certainly has no
+`crypto.subtle` for encrypting a token in `localStorage`. Any JavaScript-driven save is a coin flip.
 
-So the honest version is:
+But **a plain `<form method="post">` needs no JavaScript at all.** No fetch, no XHR, no CORS,
+no WebCrypto. It has worked in every browser since 1995.
+
+So the requirement "I want to write from my Kindle" reduces to: **something must be able to
+receive a POST.** Every option below is judged on that.
+
+---
+
+### Option 1 — Cloudflare Pages + Pages Functions ★ recommended
+
+Site and write-endpoint in one deploy, one dashboard, one vendor.
 
 ```
-First time on a device      paste the GitHub token once, choose a short passphrase
-                            → token is encrypted with the passphrase (WebCrypto,
-                              PBKDF2 + AES-GCM) and stored in localStorage
-Every time after that       type the passphrase → start writing
-Nothing is ever published   the token exists only on your phone and your laptop
+/write            static HTML, a plain <form method="post" action="/api/write">
+   ↓ POST         password · title · body · [ ] gym
+/api/write        a Pages Function (~60 lines)
+                    · checks the password server-side, constant-time, rate-limited
+                    · commits entries/2026-07-31-title.md via the GitHub API
+                    · 302 → /saved
+   ↓ push
+GitHub            the archive. Push triggers a Cloudflare Pages build
+   ↓ ~40s
+shaan.wiki/title  live
 ```
 
-Two devices, two one-time setups. After that it behaves exactly like the "just a password" you
-wanted. **[OPEN Q4]** — confirm you're fine with the one-time token paste per device.
+- ✅ **Works with JavaScript completely disabled.** This is the only property that matters for the Kindle.
+- ✅ The password is a real password again — checked on a server, no token pasting per device.
+- ✅ **You can lower the minimum TLS version to 1.0.** This is the decisive one — see below.
+- ✅ Free. The free tier is 100k function calls/day; this will use about two.
+- ✅ Secrets live server-side. Nothing sensitive ever reaches a browser.
+- ✅ One `git push` deploys everything. No separate Worker to maintain.
+- ❌ One Cloudflare account to set up, once. Nameservers move off Spaceship.
 
-### 4b. The token expires, and that's a feature
+### Option 2 — GitHub Pages + a Cloudflare Worker
 
-GitHub fine-grained tokens max out at **366 days**. The domain expires in 365.
-So: issue the token for the life of the domain, scoped to this one repo, `contents: write` only.
-It dies when the project does. Nothing to rotate, nothing to remember.
+Same shape, but hosting stays on GitHub Pages and the Worker handles only the POST.
 
-Worst case if it leaks: someone can edit one repo of public writing, and git history undoes it.
-That's the exposure, and it's acceptable — but it is real, and it's why the passphrase matters.
+- ✅ GitHub Pages is familiar.
+- ❌ **GitHub Pages controls its own TLS and you cannot lower it.** If your Kindle can't negotiate
+  a modern handshake, the *reading* site is unreachable and a working write endpoint doesn't help.
+- ❌ You need the domain on Cloudflare DNS anyway to route the Worker — so you end up with both
+  vendors regardless, and two dashboards instead of one.
+- ❌ Two deploy systems to keep in sync.
 
-### 4c. Build runs in CI, never on your machine
+Strictly worse than Option 1 unless you specifically want GitHub Pages.
 
-The reader gets pure static HTML. A **GitHub Action** fires on every push to `entries/` and
-regenerates the site — one page per entry, the index, the grid, the search index, the RSS.
+### Option 3 — GitHub Actions only
 
-The build step exists. It just runs on GitHub's machines. That's what makes "I never open a code
-editor again" true while keeping the site JS-free to read.
+Your suggestion, and it's worth answering properly: **Actions is a builder, not a receiver.**
 
-**Publish latency:** ~30–60s from save to live. The write page renders the entry immediately, so
-it never feels like waiting.
+There is no way to POST to a repository from an anonymous HTML form. `repository_dispatch` and
+`workflow_dispatch` both require a token — which puts the token back in the browser, which is
+exactly what the Kindle can't do.
 
----
+The one server-free variant that genuinely works: **write entries as GitHub Issues**, and have an
+Action convert each new issue into a file. Clever, zero infrastructure — but you'd be writing
+inside GitHub's web UI, which is far too heavy for a Kindle, and it fails requirement #3, which is
+that you write *on your own site*.
 
-## 5. Mobile is the primary interface
+**Verdict: keep Actions, but for the right job.** It's the right tool for the nightly nudge cron
+and for any scheduled maintenance. It cannot be the write endpoint. Both things you said make
+sense — they're just different jobs, and we need one of each.
 
-Most entries get typed on a phone, in bed, at 11:40pm, tired. Every design decision defers to that.
+*(If we host on Cloudflare Pages, Cloudflare runs the site build itself, so Actions may end up
+doing nothing but the 9pm nudge. That's fine — it's still the right tool for that.)*
 
-- **The editor is one full-height textarea.** No toolbar, no formatting buttons, no preview toggle
-  competing for space. Title field, body, gym tick, save. That's the entire UI.
-- **Autosave to `localStorage` on every keystroke.** A dead battery must never cost an entry.
-- **The keyboard must not cover the save button.** Save lives in the header, not the footer,
-  and the layout uses `dvh` units so the viewport shrink is handled.
-- **The gym tick is reachable without opening the editor** — one tap from the home screen.
-- **Installable as a PWA** so it's an app icon, not a bookmark. This matters more than it sounds:
-  a bookmark gets forgotten by day 12, an icon doesn't.
-- **No hover-dependent anything.** Every hover affordance needs a tap equivalent.
-- **Font size ≥ 16px in inputs**, or iOS zooms the page on focus and the whole thing feels broken.
+### Option 4 — browser commits directly to GitHub
 
----
+The previous round's pick. Now effectively dead: it needs `fetch` or XHR **plus** working CORS
+**plus** WebCrypto, on a browser where all three are doubtful. If any one is missing, writing from
+the Kindle is impossible.
 
-## 6. Kindle compatibility — the constraint that shapes everything
+Still the fastest thing to ship if you ever drop the Kindle-writing requirement. Noted, not chosen.
 
-This is the most restrictive target and it needs stating plainly, because it deletes a lot of the
-clever ideas in this document.
+### Option 5 — email-to-entry
 
-The Kindle "Experimental Web Browser" is an old WebKit on e-ink. Depending on the model, expect:
-
-| Thing | Status on Kindle |
-|---|---|
-| CSS Grid | **Unreliable to absent** |
-| Flexbox | Partial, buggy, old syntax on older models |
-| CSS custom properties (variables) | Risky on pre-2018 models |
-| `:has()`, `popover`, anchor positioning, view transitions | **None of it** |
-| `fetch()` | Likely missing — XHR only |
-| Animation / transitions | Technically render, but e-ink ghosts. Effectively unusable |
-| Hover | No pointer. Doesn't exist |
-| Colour | 16 greys. **Black and white is already the right answer** |
-| Web fonts | Skip them. System serif only |
-| TLS | Older models fail on modern certs entirely **[OPEN Q1]** |
-
-### What this forces
-
-1. **Progressive enhancement stops being aspirational and becomes the architecture.**
-   Base layer: HTML that reads correctly with no CSS at all. Then simple CSS everything supports.
-   Then modern CSS as pure garnish, inside `@supports`. The `popover` hover-previews, the view
-   transitions, the scroll-driven progress bar — all of it is garnish now. None of it can be load-bearing.
-2. **The gym grid must be a `<table>`.** Not CSS Grid, not flexbox. A table of weeks × weekdays is
-   what the data literally is, it's accessible, and it renders on anything built since 1997.
-   *This turns out to be the right call on every device, not a compromise.*
-3. **Layout in one column.** No sidebars, no infobox floated beside text. Kindle is 600px wide and
-   so is a phone. One column, always. The v1 Wikipedia-infobox idea is dead — good riddance.
-4. **Reading pages ship zero required JS.** Countdown is server-rendered into the HTML at build
-   time; JS only makes it tick live where JS exists.
-5. **A `/k` mode may be worth it** — same content, stripped stylesheet, no JS at all. Cheap to
-   generate in the same build, and it guarantees the Kindle experience instead of hoping.
-
-### Writing *from* the Kindle
-
-Different question from reading, and much harder: the Kindle on-screen keyboard makes composing an
-entry genuinely unpleasant, and `fetch` may not exist for the commit call (XHR fallback needed).
-
-**Honest recommendation: Kindle is a reading device for this project, phone is the writing device.**
-I'll make `/write` degrade far enough that it *works* on a Kindle in an emergency, but optimising
-for it would cost more than it returns. **[OPEN Q2]** — agree, or do you actually want to compose there?
-
-### The upside
-
-Every Kindle constraint points the same direction as the things you already asked for: black and
-white, no animation, tiny pages, text first, no dependencies. **The Kindle isn't fighting the
-design — it's enforcing it.** If it looks good on e-ink, it's correct.
+Cloudflare Email Workers can receive an email and commit it. Lovely as a *second* path — write from
+anywhere, no browser at all — but the Kindle can't easily send mail, so it doesn't solve this.
+Parking lot.
 
 ---
 
-## 7. The gym grid
+### Recommendation
 
-Gym only, per your call. So the design question is purely: what shape does a year of binary ticks take?
+**Option 1.** It's the only one that satisfies "write from a Kindle," it restores the true
+one-password login you originally asked for, it's free, and it's one dashboard instead of two.
 
-### How the references do it
+### The TLS argument, spelled out
 
-**GitHub's contribution graph** — 53 columns (weeks) × 7 rows (weekdays), ~10–11px squares with
-~3px gaps, month labels along the top, weekday labels on alternate rows, 5 intensity levels,
-horizontal scroll on mobile.
-Two things it gets right: weeks-as-columns makes **day-of-week patterns visible vertically** (you
-can see at a glance that you never go on Sundays), and the whole year is one image.
-One thing it gets wrong for us: it scrolls sideways on a phone, which is bad — and intensity levels
-are wasted on binary data.
+This is the concrete reason to prefer Cloudflare over GitHub Pages, and it's worth understanding
+because it may be the difference between the Kindle working and not working at all.
 
-**Habit apps (Streaks, Habitica, and most of the genre)** — month-at-a-time calendar blocks.
-More legible per-month, no scrolling, but you lose the year as a single object, and 12 blocks is
-12 things to look at instead of one.
+Old Kindles negotiate old TLS. GitHub Pages gives you no control over the handshake — take it or
+leave it. Cloudflare lets you **set the minimum TLS version down to 1.0**, and lets you decide
+whether to force an HTTPS redirect at all. If your Kindle is a 2014-era Paperwhite, that setting is
+very likely the thing that decides whether `shaan.wiki` loads on it.
 
-### The decision
+We don't yet know which Kindle you have, so we don't know if this matters. But choosing Cloudflare
+costs nothing and keeps the option open, and choosing GitHub Pages closes it permanently.
+**[OPEN Q1]**
 
-**Full year, 53 × 7, weeks as columns — GitHub's shape — built as a `<table>`, sized to fit a phone
-and a Kindle with no scrolling.**
+### A refinement worth considering
 
-The reason it fits where GitHub's doesn't: GitHub needs ~10px squares to distinguish five shades of
-green. We have two states, black and white, the highest contrast that exists. **A 5px black square
-on white is perfectly legible.** 53 columns at a 6px pitch is 318px — it fits a 390px phone and a
-600px Kindle with room to spare, then scales up on desktop.
+The Function could commit the markdown **and** a minimal generated HTML page for that one entry, so
+the entry is live the instant you hit save. CI then regenerates everything properly a minute later.
+Removes the only waiting in the whole flow. Slightly more code in the Function. **[OPEN Q5]**
 
-So the B&W constraint is what makes the full-year view possible on mobile at all. Nice when a
-constraint pays for itself.
+---
+
+## 5. Writing on the Kindle
+
+You want to write there, so it's a target, not a nice-to-have. What that costs:
+
+**The editor must be a plain form that works with zero JavaScript.**
+
+```html
+<form method="post" action="/api/write">
+  <input type="password" name="key">
+  <input type="text" name="title">
+  <textarea name="body"></textarea>
+  <label><input type="checkbox" name="gym"> Went to the gym</label>
+  <button name="action" value="draft">Save draft</button>
+  <button name="action" value="publish">Publish</button>
+</form>
+```
+
+That's it. That renders and submits on a 2012 browser.
+
+Everything else is enhancement layered on top **only where it's supported**:
+
+| Feature | Phone | Kindle |
+|---|---|---|
+| Plain form submit | ✅ | ✅ |
+| Autosave to `localStorage` every keystroke | ✅ | ❌ — no JS assumed |
+| Live word count, live countdown | ✅ | ❌ |
+| PWA home-screen icon | ✅ | ❌ |
+| Offline drafting | ✅ (service worker) | ❌ |
+
+**The Kindle risk is losing a long entry to a browser crash with no autosave.** The mitigation is
+the *"Save draft"* button above — a second submit action that commits to a `drafts/` path.
+No JS, works everywhere, and it's the honest answer to "how do I not lose my writing on a Kindle."
+Hit it every few paragraphs out of habit.
+
+Realistically the Kindle keyboard will keep entries short there, which is fine — a short entry
+still fills the square.
+
+### Other Kindle rules, restated
+
+Gone from the design, permanently: CSS Grid, flexbox as load-bearing layout, `:has()`, `popover`
+hover-previews, view transitions, animation, hover states, sidebars, floated infoboxes, web fonts,
+custom properties in critical CSS.
+
+Base layer is HTML that reads correctly with no CSS at all, then simple CSS everything supports,
+then modern CSS strictly inside `@supports` as garnish.
+
+Every one of those constraints points the same way as the things you already chose. **If it looks
+right on e-ink, it's right.**
+
+---
+
+## 6. File structure — one file per thing **[LOCKED]**
+
+Per your call: no monolithic HTML. Every page and every component is its own source file, and the
+build assembles them. HTML has no native include, so this is precisely what the build step is for.
+
+```
+src/
+  pages/
+    index.html          home — countdown, grid, latest entry
+    entry.html          template for a single entry
+    archive.html        all 365 slots
+    gym.html            full grid + month blocks + stats
+    write.html          the editor
+    colophon.html       how it's built
+    404.html
+  components/
+    head.html           meta, inlined critical CSS
+    masthead.html       the countdown
+    gym-grid-year.html  ← the 53×7 grid, its own file
+    gym-grid-month.html ← month blocks, its own file
+    gym-stats.html      streaks and percentages
+    entry-list.html
+    footer.html
+  css/
+    base.css            works on everything, including the Kindle
+    enhance.css         modern-only, wrapped in @supports
+  js/
+    countdown.js        enhancement only
+    editor.js           autosave, word count — enhancement only
+
+entries/                the archive. Plain markdown. The source of truth
+  2026-07-29-first-entry.md
+drafts/                 unpublished, committed by the "save draft" button
+data/
+  gym.json              { "2026-07-29": true, ... }
+
+functions/
+  api/write.js          the Cloudflare Pages Function
+
+build/
+  build.py              ~150 lines, no dependencies
+
+mockups/                throwaway explorations, one file per idea
+public/                 build output — what actually gets served
+```
+
+Templating stays deliberately stupid: `{{> components/gym-grid-year.html }}` for an include and
+`{{ title }}` for a value. No template language, no dependencies, no npm.
+
+**The source is many files; the output is few.** The build inlines critical CSS into each page so a
+reader still gets one request and one file. Splitting the source is for us; the reader gets the
+monolith. That's the whole reason a build step exists.
+
+---
+
+## 7. The gym grid **[LOCKED — variant A]**
+
+Full year, 53 columns × 7 rows, weeks as columns, GitHub's shape, built as a `<table>`.
 
 ```
         Aug    Sep    Oct    Nov    Dec    Jan    Feb ...
    Mon  ■ ■ □ ■ ■ □ ■ ■ ■ □ ■ · · · · · · · · · · · ·
-   Tue  ■ ■ ■ □ ■ ■ ■ □ ■ ■ ■ · · · · · · · · · · · ·
    Wed  □ ■ ■ ■ □ ■ ■ ■ □ ■ ■ · · · · · · · · · · · ·
-   Thu  ■ □ ■ ■ ■ ■ □ ■ ■ ■ □ · · · · · · · · · · · ·
    Fri  ■ ■ □ ■ ■ □ ■ ■ ■ ■ □ · · · · · · · · · · · ·
-   Sat  □ □ ■ ■ □ ■ □ ■ ■ ■ ■ · · · · · · · · · · · ·
-   Sun  □ ■ □ ■ ■ ■ ■ □ □ ■ ■ · · · · · · · · · · · ·
 
    ■ went    □ didn't    · not yet
-        147 of 213 days · current streak 6 · longest 19
+        91 of 213 days · current streak 6 · longest 19
 ```
 
-Three states, three treatments: **solid black** (went), **1px outline** (didn't), **faint dot**
-(hasn't happened). The future being visible — a year of empty squares waiting — is the whole
-emotional point, and it's what ties the grid to the countdown.
+Three states: solid black (went), 1px outline (didn't), faint outline (hasn't happened yet).
+Today's square gets a ring. The visible empty future is what ties the grid to the countdown.
 
-Today's square gets a ring so you can always find it.
+Why it fits a phone where GitHub's doesn't: GitHub needs ~10px squares to separate five greens.
+Two states at maximum contrast stay legible at 5px, so 53 columns is 318px — fits a 390px phone and
+a 600px Kindle with no sideways scroll, then scales up on desktop. **The black-and-white rule is
+what makes the full-year view possible on mobile.**
 
-`/gym` gets the same data as month blocks for the "which Tuesdays do I skip" question, plus stats.
-The homepage gets the year.
+A table because that's what the data is — weeks × weekdays — and because it renders on anything
+built since 1997. Right call on every device, not a Kindle compromise.
 
-**A mockup of the real thing is in [`mockups/gym-grid.html`](mockups/gym-grid.html)** — open it on
-your phone and your Kindle before we commit to it. **[OPEN Q3]**
+Mockup: [`mockups/gym-grid-year.html`](mockups/gym-grid-year.html) (chosen design, on its own,
+per §6) and [`mockups/gym-grid-options.html`](mockups/gym-grid-options.html) (all four, for reference).
+
+`/gym` also gets month blocks for the "which Tuesdays do I skip" question.
 
 ---
 
 ## 8. How a day works
 
 ```
-  1. Tap the shaan.wiki icon on the home screen
-  2. Passphrase (once per session, or once per device if you prefer)
+  1. Open shaan.wiki/write  (home-screen icon on the phone, bookmark on the Kindle)
+  2. Password
   3. Title  →  becomes the URL
-  4. Write. Autosaves every keystroke.
+  4. Write.  Phone: autosaves every keystroke.  Kindle: hit "Save draft" now and then
   5. [ ] Gym today?          ← one tap
-  6. Save
+  6. Publish
        ↓
-  Browser commits  entries/2026-07-31-title.md  +  updates  data/gym.json
+  Function commits  entries/2026-07-31-title.md  +  updates  data/gym.json
        ↓
-  Action rebuilds  →  live at  shaan.wiki/title  in under a minute
+  Rebuild  →  live at  shaan.wiki/title  in under a minute
 ```
 
-## 9. Storage layout
-
-```
-entries/
-  2026-07-29-first-entry.md
-  2026-07-30-on-buying-a-domain.md
-data/
-  gym.json          { "2026-07-29": true, "2026-07-30": false, ... }
-```
+## 9. Entry format
 
 ```markdown
 ---
@@ -261,14 +339,14 @@ tags: [domains, writing]
 Body text. Wikilinks like [[On buying a domain]] resolve at build time.
 ```
 
-Frontmatter is the only structure. The index, the grid, backlinks, word counts and streaks are all
+Frontmatter is the only structure. Index, grid, backlinks, word counts and streaks are all
 **derived** — delete the entire site and `entries/` rebuilds it. That's the durability guarantee,
-and it's why the archive is text files rather than a database.
+and it's why the archive is text files and not a database.
 
 ## 10. URLs
 
 ```
-/                      home — countdown, gym grid, latest entry, recent list
+/                      home
 /<title-slug>          an entry
 /<title-slug>.txt      raw source, plain text
 /day/2                 the same entry by day number
@@ -280,154 +358,136 @@ and it's why the archive is text files rather than a database.
 /wanted                wikilinks pointing at pages that don't exist yet
 /random                jump somewhere
 /colophon              how it's built
-/write                 the password-gated writing surface
+/write                 the editor
 /feed.xml              RSS
-/k/...                 Kindle mode — same content, no CSS tricks, no JS
+/k/...                 Kindle mode — no CSS tricks, no JS, guaranteed
 ```
 
 Title collisions get `-2`. Renaming leaves a redirect stub, because a wiki that breaks its own
 links is a broken wiki.
 
-## 11. Black and white — making monochrome look deliberate
+## 11. Black and white
 
-Three values: `#000`, `#fff`, and greys used strictly for structure (hairlines, empty squares).
+Three values: `#000`, `#fff`, and greys strictly for structure.
 
 - **Hierarchy** → size, weight, letter-spacing. Nothing else.
 - **Emphasis** → full black fill, white text. Used sparingly it hits harder than any colour.
 - **Links** → underlined, offset tuned. Visited gets a subtler underline, not a different hue.
 - **Rules** → 1px hairlines. Wikipedia's underlined headings, thinner, with more air.
 - **Dark mode** → exact inversion. B&W is the one palette where flipping is lossless.
-  (Though on Kindle it's irrelevant, and on e-ink dark mode is actively worse.)
-- **Images** → 1-bit dithered (Floyd–Steinberg). Tiny, instant, and looks intentional in a way a
-  greyscale photo never does. Also the only image format that's *native* to e-ink. **[OPEN Q7]**
-- **Texture** → density is the only ornament available: how tight the grid, how heavy the rule,
-  how much air. Monochrome forces us to be good at this.
-
-The stylesheet should fit on one screen and inline into `<head>`.
+  Irrelevant on e-ink, and actively worse there, so the Kindle build stays light.
+- **Images** → 1-bit dithered (Floyd–Steinberg). Tiny, instant, intentional-looking, and the only
+  image format native to e-ink. **[OPEN Q6]**
+- **Texture** → density is the only ornament: how tight the grid, how heavy the rule, how much air.
 
 ## 12. The countdown
 
 ```
    D A Y   0 0 3   ·   3 6 2   D A Y S   R E M A I N
-   ────────────────────────────────────────────────
 ```
 
-Rendered into the HTML at build time so it's correct with JS off and on Kindle. JS makes it tick
-live where JS exists.
-
-Days-only (calm, monumental) or ticking seconds (urgent, a performance)? Seconds would ghost
-horribly on e-ink, so at minimum the Kindle build is days-only. **[OPEN Q6]**
+Rendered into the HTML at build time so it's correct with JS off and on the Kindle. JS makes it
+tick live where JS exists. Ticking seconds would ghost badly on e-ink, so the Kindle build is
+days-only regardless. **[OPEN Q7]**
 
 **What happens at zero?** Renew and start Year Two · freeze it as a permanent monument · let it
 lapse and go dark. Doesn't need answering now, but the site should be *designed* as though the
-ending matters, because that's what makes a countdown mean anything. **[OPEN Q10]**
+ending matters, because that's what makes a countdown mean anything. **[OPEN Q9]**
 
 ## 13. Rules of the game
 
-- **No backfilling.** **[LOCKED]** A gap is permanent. The write endpoint refuses any date but today.
-- **Editing an entry after posting:** allowed — it's a wiki, and git keeps every version. Each entry
-  footers to its own revision history.
+- **No backfilling.** **[LOCKED]** The write endpoint refuses any date but today.
+- **Editing after posting:** allowed — it's a wiki, git keeps every version, each entry footers to
+  its own revision history.
 - **Deleting:** suggestion — no delete, only *retract*. The page stays, the body is struck through.
   Wikis don't memory-hole. **[OPEN]**
 - **Minimum length:** one sentence counts. Zero words doesn't.
-- **Day boundary:** needs a timezone, presumably IST — and a grace window, because writing at 1am
-  about the day that just ended is the normal case, not the exception. Suggest the day ends at 4am
-  local. **[OPEN Q5]**
-- **Does the gym tick follow the same no-backfill rule?** If you forget to tick on Tuesday, is
-  Tuesday gone? Consistency says yes; it also means one forgetful tap costs you a square you earned.
-  **[OPEN Q8]**
+- **Day boundary:** needs a timezone, presumably IST, and a grace window — writing at 1am about the
+  day that just ended is the normal case. Suggest the day ends at 4am local. **[OPEN Q3]**
+- **Does the gym tick follow no-backfill?** Consistency says yes; it also means one forgetful tap
+  costs a square you earned. **[OPEN Q8]**
 
 ## 14. Wiki features worth having
 
-1. **Wikilinks + backlinks.** Write `[[Something]]`; the build resolves it and adds a
-   *"What links here"* section to the target. **This is what makes it a wiki and not a blog**,
-   and it's ~30 lines in the build script.
+1. **Wikilinks + backlinks.** `[[Something]]` resolves at build time and adds a *"What links here"*
+   section to the target. **This is what makes it a wiki and not a blog**, and it's ~30 lines.
 2. **Wanted pages.** Every `[[link]]` to a page that doesn't exist yet gets listed at `/wanted` —
-   a writing-prompt generator built out of your own unfinished thoughts. Best idea in this document.
-3. **Stub notice.** Under ~50 words renders *"This entry is a stub."* Honest, and the same joke
-   Wikipedia has been making for 25 years.
-4. **Revision history.** Footer of every entry: "Last edited on X · all revisions" → GitHub.
+   a writing-prompt generator built from your own unfinished thoughts. Best idea in this document.
+3. **Stub notice.** Under ~50 words renders *"This entry is a stub."*
+4. **Revision history.** Every entry footer: "Last edited on X · all revisions" → GitHub.
 5. **Talk pages.** `/talk/<entry>` — where you argue with your own past position.
-6. **Citations.** Claims about your own life footnoted to the commit, tweet, or receipt that proves
-   them. Turns autobiography into something falsifiable.
+6. **Citations.** Claims about your life footnoted to the commit or receipt that proves them.
 
 ## 15. Making it survive 365 days
 
 The failure mode is not technical. It's **day 40, when you're tired.**
 
 - Phone-first editor, one textarea, nothing in the way.
-- Autosave every keystroke. Non-negotiable.
+- Autosave every keystroke where JS exists; "Save draft" where it doesn't.
 - One tap for the gym tick, no editor required.
-- PWA icon on the home screen.
-- **A nightly nudge** — a GitHub Action cron that pings you at 9pm if nothing's written yet.
-  Unglamorous, and probably the highest-leverage feature in this document. **[OPEN Q9]**
+- PWA icon on the home screen — a bookmark gets forgotten by day 12, an icon doesn't.
+- **A nightly nudge** — a GitHub Action cron at 9pm if nothing's written. Unglamorous, and probably
+  the highest-leverage feature in this document. **[OPEN Q4]**
 - Never show a spinner. The entry appears saved instantly and syncs behind you.
 
 ## 16. Non-goals
 
-- No comments, likes, share buttons, or analytics.
-- No CMS, no admin panel, no database of record.
-- No cookie banner, because there'll be nothing to consent to.
-- No colour. Not even one accent. Not even for links.
-- No JS required to read anything.
-- No dependencies, no CDN, no webfonts.
-- No hero section, no scroll-jacking, no CTA.
+No comments, likes, shares, analytics. No CMS or admin panel. No cookie banner, because there'll be
+nothing to consent to. No colour, not even one accent. No JS required to read anything. No
+dependencies, no CDN, no webfonts. No hero section, no CTA.
 
 ## 17. Budget
 
-- Home page **under 20 KB** including inlined CSS, one request to first paint.
-- Entry page under 15 KB. Archive page under 60 KB.
-- Usable on 3G, readable with JS off, legible on e-ink.
-- Footer flexes it: *"This page is 11.4 KB and made 1 request."*
+Home page under 20 KB including inlined CSS, one request to first paint. Entry page under 15 KB.
+Archive under 60 KB. Usable on 3G, readable with JS off, legible on e-ink.
+Footer flexes it: *"This page is 11.4 KB and made 1 request."*
 
 ---
 
 ## 18. Open questions **[OPEN]**
 
-**Q1 — Which Kindle?** Model and roughly what year. A 2023 Scribe and a 2014 Paperwhite are
-completely different browsers, and it decides how much of the modern CSS survives. If it's an older
-one, TLS may fail before we even get to layout — worth you trying to load any HTTPS site on it now
-and telling me what happens. *This is the highest-value thing you can check today.*
+**Q1 — Which Kindle, and does HTTPS work on it?** Model and roughly what year. Now the single most
+important unknown in the project: it decides whether the TLS-floor argument in §4 is decisive or
+irrelevant. *Please try loading any https:// site on the Kindle and tell me what happens.*
 
-**Q2 — Kindle: read-only, or write there too?** My recommendation is read-only, with `/write`
-degrading enough to work in a pinch. (§6)
+**Q2 — Confirm Cloudflare Pages + Functions?** (§4, Option 1.) It means moving nameservers off
+Spaceship. Say go and I'll write the setup steps.
 
-**Q3 — The grid.** Mockup is in `mockups/gym-grid.html`. Open it on the phone and the Kindle.
-Does the full-year view hold up, or do you want month blocks?
+**Q3 — Timezone and day boundary.** IST? Midnight, or ~4am so late-night writing counts for the
+day it's about?
 
-**Q4 — The one-time token paste per device.** Fine? (§4a) If it bothers you, the Cloudflare Worker
-route gives you a true password-only login — it's ~40 lines and free, and it's the one thing I'd
-still nudge you toward.
+**Q4 — Where does Day 1 start?** Registration was 29 July, so under no-backfill **days 1 and 2 are
+already permanent gaps before you've written a word.** Either (a) Day 1 is 29 July and you open
+with two holes, or (b) Day 1 is your first entry and the countdown tracks the domain separately.
+*Still the most time-sensitive question here — it needs answering before the first entry.*
 
-**Q5 — Timezone and day boundary.** IST? And does the day end at midnight or ~4am?
+**Q5 — Instant publish?** Should the Function also write a quick HTML page so the entry is live the
+second you save, instead of ~40s later? (§4)
 
-**Q6 — Where does Day 1 start?** Registration day was 29 July — which means under a no-backfill
-rule, **days 1 and 2 are already permanent gaps before you've written a word.** Options: (a) Day 1
-is 29 July and you start with two holes, which is either honest or demoralising; (b) Day 1 is your
-first entry and the countdown just tracks the domain separately. *This needs answering before the
-first entry, so it's the most time-sensitive question here.*
+**Q6 — Images at all?** Dithered photos inside entries, or strictly text forever?
 
-**Q7 — Images at all?** Dithered photos inside entries, or strictly text forever?
+**Q7 — Countdown: days only, or ticking seconds** on devices that can handle it?
 
-**Q8 — Does the gym tick follow the no-backfill rule?** (§13)
+**Q8 — Does the gym tick follow the no-backfill rule?**
 
-**Q9 — The 9pm nudge?** Email, push, or none.
+**Q9 — What happens on day 365?** Renew, freeze, or let it die.
 
-**Q10 — What happens on day 365?** Renew, freeze, or let it die. (§12)
+**Q10 — What are you actually writing?** Freeform, or a fixed shape (a thought / a thing learned /
+a log)? A paragraph or a page? Fixed shapes are far easier to sustain on a bad day, and this
+changes the editor.
 
-**Q11 — What are you actually writing?** Freeform, or a fixed shape (a thought / a thing learned /
-a log)? And rough length — a paragraph or a page? Fixed shapes are far easier to sustain on a bad
-day. This determines whether the archive reads as notes or as essays, and it changes the editor.
+**Q11 — The nightly nudge** — email, push, or none?
 
 ---
 
 ## 19. Parking lot
 
-- Word-count bar chart across the year — a monochrome skyline of how much you wrote each day.
+- Email-to-entry via Cloudflare Email Workers — write from anywhere, no browser.
+- Word-count bar chart across the year — a monochrome skyline of daily output.
 - Footer stats: words written, days elapsed, longest streak, gym percentage.
 - `curl shaan.wiki` returns a nicely formatted plain-text version. Because it should.
 - `/api/shaan.json` — the whole archive as structured data.
 - A "year in review" page auto-generated on day 365.
-- Full-text search over the archive, `/` to focus, from a generated index.
-- Print stylesheet — the year prints as a book. Genuinely worth doing at day 365.
-- Send each entry to the Kindle by email as it's written, so the archive lands in your library too.
+- Full-text search over the archive, `/` to focus.
+- Print stylesheet — the year prints as a book at day 365.
+- Send each entry to the Kindle by email so the archive lands in your library too.
