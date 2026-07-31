@@ -2,28 +2,31 @@
  *
  * The new theme comes down over the old one as a straight edge, tilted so the
  * right side leads. It starts at the top right corner, where the button is,
- * and sweeps to the bottom left. Slow enough to watch: 900ms, near constant
- * speed, easing out only at the very end so it settles rather than stops.
+ * and sweeps to the bottom left. Constant speed: an eased tail makes the last
+ * third crawl, which reads worse than simply moving faster.
  */
 (function () {
   "use strict";
   var btn = document.getElementById("theme");
   if (!btn) return;
 
-  var MS = 1000;
+  var MS = 780;
 
   function apply(next) {
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem("shaan.wiki:theme", next); } catch (e) {}
   }
 
-  /* The mask is 250% of the page tall and its soft band occupies the 32% to 44%
-     stops, which is about a third of a page height. At 73.33% the whole band
-     sits above the page and nothing of the new theme shows; at -13.33% it has
-     passed below and the page is fully covered. Sliding between the two walks
-     the band down. A wider feather washes the whole page grey at the midpoint,
-     which reads as a fault rather than as light. */
-  var FROM = "0% 73.33%", TO = "0% -13.33%";
+  /* The band occupies the 44% to 56% stops of a mask 2.5 pages tall, so the
+     feather is 30% of a page height and the opaque head is 1.1 pages.
+
+     At 93.3333% the band sits exactly above the page and nothing of the new
+     theme shows. At 0% the box top is level with the page top and the opaque
+     head covers all of it. Those two endpoints are forced by the geometry: end
+     anywhere below 0% and the top strip falls outside the mask box, which
+     no-repeat renders transparent, so the old theme reappears at the top until
+     the transition ends. */
+  var FROM = "0% 93.3333%", TO = "0% 0%";
 
   btn.addEventListener("click", function () {
     var next = document.documentElement.dataset.theme === "light" ? "dark" : "light";
@@ -35,7 +38,7 @@
       .ready.then(function () {
         document.documentElement.animate(
           { maskPosition: [FROM, TO], WebkitMaskPosition: [FROM, TO] },
-          { duration: MS, easing: "cubic-bezier(.22,0,.18,1)",
+          { duration: MS, easing: "linear",
             pseudoElement: "::view-transition-new(root)" });
       });
   });

@@ -343,10 +343,16 @@ ul.arch a { font-size: 15px; }
   animation: none; mix-blend-mode: normal; z-index: 1;
   /* A gradient mask rather than a clip path, so the edge is a band of light
      passing down the page rather than a line drawn across it. Tilted a few
-     degrees so the right side, where the button is, leads. The mask box is
-     2.5x the page so the band can start and finish entirely offscreen. */
-  -webkit-mask-image: linear-gradient(172deg, #000 0%, #000 32%, rgba(0,0,0,.62) 37%, rgba(0,0,0,.18) 41%, transparent 44%);
-  mask-image: linear-gradient(172deg, #000 0%, #000 32%, rgba(0,0,0,.62) 37%, rgba(0,0,0,.18) 41%, transparent 44%);
+     degrees so the right side, where the button is, leads.
+
+     The mask box is 2.5x the page, and its opaque head is 44% of that, which
+     is 1.1 page heights. That matters: the head has to cover a whole page
+     while the box top is still at or above y=0. Make it shorter and the end
+     of the sweep slides the box below the top of the page, where mask-repeat:
+     no-repeat leaves the strip unmasked and the old theme shows through until
+     the transition ends and snaps. */
+  -webkit-mask-image: linear-gradient(172deg, #000 0%, #000 44%, rgba(0,0,0,.6) 49%, rgba(0,0,0,.15) 53%, transparent 56%);
+  mask-image: linear-gradient(172deg, #000 0%, #000 44%, rgba(0,0,0,.6) 49%, rgba(0,0,0,.15) 53%, transparent 56%);
   -webkit-mask-size: 100% 250%;  mask-size: 100% 250%;
   -webkit-mask-repeat: no-repeat; mask-repeat: no-repeat;
 }
