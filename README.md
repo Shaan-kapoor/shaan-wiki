@@ -1,97 +1,96 @@
 # shaan.wiki
 
-A one-year writing machine with a death clock on it.
+**One year. One entry a day. Then it stops.**
 
-From **1 August 2026** to **31 July 2027**, one entry a day and one gym tick a day.
-Each day's entry is editable until midnight IST, then sealed forever. Missed days stay missed.
-
-The domain expires on **30 July 2027 at 01:18 IST**, day 364 of 365. The year cannot be
-finished without renewing.
-
-Design notes, decisions and open questions live in [idea.md](idea.md).
-
-## How it works
+A wiki that runs from 1 August 2026 to 31 July 2027 and then does not run any more.
+Three hundred and sixty five slots. Every day you fill one or you do not, and either way
+the record stands.
 
 ```
-entries/2026-08-01.md   one markdown file per day. The archive. The source of truth
-data/gym.json           { "2026-08-01": true }
-data/vault.json         the GitHub token, encrypted with your password
-        ↓
-build/build.py          no dependencies. Renders everything
-        ↓
-public/                 static HTML. Deployed to GitHub Pages by Actions
+Mon  ███████ ██ ██  ███ ██ ███ ██  ·································
+     ████ ███████ ████ █████ ████· ·································
+     ██ ████ ██ █████ ██  ██████ · ·································
+Fri  █████ ███ ██ ████ ███ ████  ·· ·································
+     ██ ██  ███ █████ ██ ████ ███ ·································
 ```
 
-Everything on the site, the index, the grids, streaks, word counts, backlinks, is **derived**.
-Delete `public/` and it rebuilds identically. Delete the whole site and `entries/` rebuilds it.
-That is why the archive is text files and not a database.
+---
 
-## Writing
+## It ends, and that is the point
 
-Go to [shaan.wiki/write](https://shaan.wiki/write), type the password, write, publish.
-No code editor, no local setup, works on a phone or a Kindle.
+Most personal sites are open ended. They accumulate. Nothing is ever finished, so nothing is
+ever at stake, and the thing quietly stops being updated without ever formally ending.
 
-The password decrypts a GitHub token held in `data/vault.json` (PBKDF2-SHA256, 600k iterations,
-AES-GCM). The token is never stored in plaintext and never leaves the device. A raw token in a
-public repo would be auto-revoked by GitHub secret scanning within minutes; an encrypted blob is
-invisible to it.
+This one has a last day. The final square is already drawn on the grid before a word has been
+written into it. You can see, on day one, the exact shape of the thing you are about to fail
+to fill in completely.
 
-**The password is the only thing protecting the token, and the blob is public.** Use four random
-words. If it ever leaks, the worst case is a defacement of one repo of public writing, revertible
-from git history.
+A year is only long if you are not counting.
 
-## Setup, once
+## The day is the unit
 
-### 1. DNS, the only thing blocking the site going live
+An entry belongs to a calendar day in Indian Standard Time, midnight to midnight.
+While that day is open you can write it, rewrite it, retitle it, change your mind entirely.
 
-`shaan.wiki` is still on Spaceship's parking nameservers. Until it points at GitHub, the site is
-unreachable: this account's Pages sites all redirect to `shaankapoor.me` (set as the custom domain
-on `Shaan-kapoor.github.io`), and that domain has no DNS records at all, so every project page
-301s into a dead end. Giving this repo its own custom domain bypasses that entirely.
+At midnight it seals. Not by a scheduled job or a locked field, but because the only date the
+site will ever write to is today. When tomorrow arrives, yesterday simply stops being a thing
+that can be addressed.
 
-At Spaceship, on `shaan.wiki`, add four **A** records for the apex (`@`):
+So the archive is not a draft folder. It is a series of positions held on particular days,
+including the embarrassing ones.
 
-```
-185.199.108.153
-185.199.109.153
-185.199.110.153
-185.199.111.153
-```
+## A missed day stays missed
 
-and optionally a **CNAME** for `www` → `shaan-kapoor.github.io`.
+There is no backfilling. If nothing was written on a Tuesday, that square is empty forever and
+no amount of guilt on Wednesday can change it.
 
-Then:
+This is the whole difference between a record and a to-do list. A grid you can go back and fill
+in is a chore chart. A grid you cannot is a history. The second one is worth looking at.
 
-```
-echo shaan.wiki > data/domain.txt && git add -A && git commit -m "Claim the domain" && git push
-```
+## Presence reads as light
 
-and set the custom domain under Settings → Pages. Tick **Enforce HTTPS** once the certificate
-is issued (a few minutes).
+The site is black and white. Not mostly, not almost: two values and a few greys that exist only
+to hold structure together.
 
-### 2. The token
+On a black field, a day you showed up for is a bright mark and a day you did not is nearly
+nothing. The metaphor runs the right way round. Doing the thing adds light. Skipping it leaves
+the dark where it already was.
 
-1. GitHub → Settings → Developer settings → Personal access tokens → **Fine-grained tokens**.
-   Repository access: only this repo. Permissions: `Contents: Read and write`, nothing else.
-   Expiry: the maximum, 366 days, one day longer than the domain, so it never needs rotating.
-2. Open `tools/make-vault.html` **locally** in a browser. Paste the token and a password.
-3. Save the output as `data/vault.json` and commit it.
+There is no accent colour. Not even for links. In a system with no colour, the only axes left
+are space, brightness and scale, and it turns out those three are enough for everything.
 
-Pages is already enabled with **GitHub Actions** as the source, and the deploy workflow is green.
+## Plain text, or it did not happen
 
-## Building locally
+Every entry is a markdown file in this repository. Not a row in a database, not a block in an
+app, not a document in a service that will be acquired and sunset.
 
-```
-python3 build/build.py     # writes public/
-```
+Everything else on the site is derived: the index, the grids, the streaks, the backlinks, the
+word counts. Delete the entire built site and it reconstructs itself from the text files. Delete
+the tooling and the writing is still there, readable in any editor made in the last forty years.
 
-Python 3.8+. No dependencies, no npm, no lockfile, nothing to update.
+Every format worth trusting for ten years has been plain text. Every format that lost things
+was not. There is no third category.
 
-## Rules
+## It gets out of the way
 
-- One entry per day. The filename is the date, so this is structural.
-- Editable until 00:00 IST. Then never.
-- No backfilling, the endpoint only ever writes today's date.
-- Black and white only.
-- No JavaScript required to read anything.
-- The only animation on the site is the intro, and its purpose is to stop.
+Nothing on the site explains itself. There are no labels, no instructions, no empty state copy
+telling you what to do next. There is one reader and he already knows.
+
+Almost nothing moves. There is a single animation, when the page opens, and its entire purpose
+is to finish. After it settles, nothing on this site moves again.
+
+Writing happens on the site itself. Open it, type, publish. No editor, no local setup, no build
+to run, no deploy to trigger. The friction of writing something down should never exceed the
+friction of not bothering.
+
+## The gym is one square
+
+Alongside the writing, a second grid, one binary tick a day. Did you go.
+
+Not sets, not weights, not duration, not a chart of progressive overload. Those are ways of
+turning a simple thing into a project you can abandon. The only question that survives a bad
+week is whether you went, and the only honest answers are yes and no.
+
+---
+
+*Written into it every day for a year, and then not.*

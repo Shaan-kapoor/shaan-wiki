@@ -439,3 +439,22 @@ archive of essays.
 - Full-text search over the archive, `/` to focus.
 - Print stylesheet, the year prints as a book at day 365.
 - Send each entry to the Kindle by email so the archive lands in your library too.
+
+---
+
+## 21. Running it
+
+```
+python3 build/build.py          # writes public/
+SHAAN_TODAY=2027-02-27 \
+SHAAN_ENTRIES=... SHAAN_GYM=... \
+SHAAN_OUT=... python3 build/build.py    # a populated preview, real archive untouched
+```
+
+Python 3.8+, no dependencies. CI runs the same command on every push and deploys `public/`
+to GitHub Pages.
+
+Live setup, all one-time and all done: DNS is four A records on the apex pointing at GitHub
+Pages, the custom domain is claimed by `data/domain.txt` becoming the `CNAME` file in the
+build, and `data/vault.json` holds the write token encrypted with the password. Rotating the
+password or the token means visiting `/setup` again and nothing else.
