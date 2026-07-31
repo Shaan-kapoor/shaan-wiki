@@ -1,0 +1,17 @@
+{{> components/head.html }}
+{{> components/nav.html }}
+
+<div class="setup">
+  <input id="tok" type="password" placeholder="github token" autocomplete="off"
+         autocapitalize="off" autocorrect="off" spellcheck="false">
+  <input id="pw" type="text" placeholder="password" autocomplete="off"
+         autocapitalize="off" autocorrect="off" spellcheck="false">
+  <div class="row">
+    <span id="msg" class="meta"></span>
+    <button id="go" type="button">Save</button>
+  </div>
+</div>
+
+{{> components/foot.html }}
+<script src="/js/api.js" defer></script>
+<script src="/js/setup.js" defer></script>

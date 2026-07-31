@@ -307,6 +307,22 @@ ul.arch a { font-size: 15px; }
 #state { transition: opacity .2s ease; }
 #state.fade { opacity: 0; }
 
+.setup { display: flex; flex-direction: column; gap: 18px; max-width: 420px; }
+.setup input {
+  background: none; border: 0; border-bottom: 1px solid var(--hush);
+  padding: 0 0 8px; color: var(--fg);
+  font: 400 16px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+.setup input:focus { outline: none; border-bottom-color: var(--fg); }
+.setup input::placeholder { color: var(--hush); }
+.setup .row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.setup button {
+  border: 0; background: none; cursor: pointer; padding: 8px 0;
+  font: 400 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: .2em; text-transform: uppercase; color: var(--fg);
+}
+.setup button:disabled { color: var(--hush); cursor: default; }
+
 .gate { display: flex; align-items: baseline; gap: 14px; margin-top: 8px; }
 .gate[data-state="checking"] #pw { color: var(--quiet); }
 #pw {

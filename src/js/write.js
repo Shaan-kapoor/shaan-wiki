@@ -58,7 +58,7 @@
   SW.autoUnlock($("pw"), open, function (st) {
     var gate = $("gate");
     gate.dataset.state = st || "";
-    if (st === "novault") { $("gatemsg").textContent = "no vault.json"; return; }
+    if (st === "novault") { $("gatemsg").innerHTML = '<a href="/setup/">set up</a>'; return; }
     if (st === "") {
       $("gatemsg").textContent = "";
       gate.classList.remove("wrong");
@@ -70,7 +70,7 @@
   });
 
   SW.hasVault().then(function (ok) {
-    if (!ok) $("gatemsg").textContent = "no vault.json";
+    if (!ok) $("gatemsg").innerHTML = '<a href="/setup/">set up</a>';
   });
 
   async function open() {

@@ -166,6 +166,10 @@ window.SW = (function () {
     unlock: unlock, autoUnlock: autoUnlock, gh: gh, put: put, decode: decode,
     setGym: setGym, getGym: getGym, todayIST: todayIST, isoDate: isoDate,
     localGet: localGet, localSet: localSet, flush: flush,
+    setToken: function (t) {
+      token = t;
+      try { localStorage.setItem("shaan.wiki:token", t); } catch (e) {}
+    },
     hasVault: function () {
       return fetch("/vault.json", { method: "HEAD" }).then(function (r) {
         return r.ok;

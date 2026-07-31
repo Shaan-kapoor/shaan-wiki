@@ -401,8 +401,10 @@ def main():
                    render(read(os.path.join(pages, "wanted.html")), ctx))
 
     # write + 404
-    for name, out in (("write.html", "write/index.html"), ("404.html", "404.html")):
-        ctx = dict(base, title="Write" if "write" in name else "Not found")
+    for name, out in (("write.html", "write/index.html"),
+                      ("setup.html", "setup/index.html"),
+                      ("404.html", "404.html")):
+        ctx = dict(base, title=name.split(".")[0])
         total += write(out, render(read(os.path.join(pages, name)), ctx))
 
     # static
