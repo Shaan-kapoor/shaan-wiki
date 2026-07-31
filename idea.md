@@ -10,7 +10,7 @@ Last updated: 2026-07-31
 
 **shaan.wiki is a one-year writing machine with a death clock on it.**
 
-From 1 August 2026 to 31 July 2027, Shaan writes one thing a day and ticks whether he went to the
+From 31 July 2026 to 30 July 2027, Shaan writes one thing a day and ticks whether he went to the
 gym. Each day's entry seals at midnight and becomes a permanent page. At the end the site is the
 archive of a year, 365 articles, 365 squares, and a number that counted down the whole time.
 
@@ -26,8 +26,8 @@ Expires         2027-07-29 19:48:39 UTC  =  2027-07-30 01:18:39 IST
 Nameservers     launch1/launch2.spaceship.net  (parked, nothing served yet)
 Repo            github.com/Shaan-kapoor/shaan-wiki  (private for now)
 
-Day 1           2026-08-01  (Saturday)
-Day 365         2027-07-31  (Saturday)
+Day 1           2026-07-31  (Friday)
+Day 365         2027-07-30  (Friday)
 Timezone        Asia/Kolkata, UTC+5:30, no DST, ever
 Day boundary    00:00:00 IST to 23:59:59 IST
 Kindle          newest model, modern browser, no compatibility worries
@@ -80,7 +80,7 @@ it. Three ways to handle it:
 | 14 | One HTML file per thing | Components and pages are separate source files. See §7 |
 | 15 | **Day = 00:00–00:00 IST** | No grace window. Midnight is midnight |
 | 16 | **Entries seal at midnight IST** | Editable all day, immutable forever after. See §5 |
-| 17 | **Day 1 = 1 August 2026** | Day 365 = 31 July 2027 |
+| 17 | **Day 1 = 31 July 2026** | Day 365 = 30 July 2027, the day the domain expires |
 
 ---
 
@@ -163,7 +163,7 @@ that expires in 366 days, which is the opposite of what you asked for.
                     · resolves "today" in Asia/Kolkata
                     · checks the password, constant-time, rate-limited
                     · refuses any date that isn't today  ← the seal
-                    · commits entries/2026-08-01.md via the GitHub API
+                    · commits entries/2026-07-31.md via the GitHub API
                     · 302 → back to /write with the entry loaded
    ↓ push
 GitHub            the archive. Push triggers a Cloudflare Pages build
@@ -236,9 +236,9 @@ src/
     editor.js           autosave, word count, enhancement only
 
 entries/
-  2026-08-01.md         one file per day. Title lives in frontmatter
+  2026-07-31.md         one file per day. Title lives in frontmatter
 data/
-  gym.json              { "2026-08-01": true, ... }
+  gym.json              { "2026-07-31": true, ... }
 
 functions/
   api/write.js          the Cloudflare Pages Function
@@ -261,7 +261,7 @@ request. Splitting the source is for us, the reader gets the monolith.
 ```markdown
 ---
 title: On buying a domain
-date: 2026-08-01
+date: 2026-07-31
 day: 1
 gym: true
 tags: [domains, writing]

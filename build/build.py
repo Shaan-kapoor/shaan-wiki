@@ -18,7 +18,7 @@ from datetime import date, datetime, timedelta, timezone
 
 # --- configuration -----------------------------------------------------------
 IST = timezone(timedelta(hours=5, minutes=30))
-DAY_ONE = date(2026, 8, 1)
+DAY_ONE = date(2026, 7, 31)
 DAY_COUNT = 365
 LAST_DAY = DAY_ONE + timedelta(days=DAY_COUNT - 1)          # 2027-07-31
 SITE = "shaan.wiki"
@@ -316,7 +316,7 @@ def main():
         "css": css,
         "day": str(dnum),
         "day_count": str(DAY_COUNT),
-        "entry_count": str(len(entries)),
+        "entry_count": str(len([e for e in entries if e["day"]])),
         "gym_count": str(len([d for d in gym_days if d <= today])),
         "elapsed": str(max(dnum, 0)),
         "total_words": str(sum(e["words"] for e in entries)),
@@ -348,28 +348,37 @@ def main():
             "title": html.escape(e["title"]),
             "slug": e["slug"],
             "body": bodyhtml,
-            "entry_day": str(e["day"]),
-            "entry_date": e["date"].strftime("%-d %B %Y").lower(),
+            "entry_meta": (("%d &nbsp; " % e["day"]) if e["day"] else "") +
+                          e["date"].strftime("%-d %B %Y").lower(),
             "entry_date_iso": e["date"].isoformat(),
             "words": str(e["words"]),
         })
         total += write("%s/index.html" % e["slug"],
                        render(read(os.path.join(pages, "entry.html")), ctx))
         total += write("%s.txt" % e["slug"], e["body"])
-        total += write("day/%d/index.html" % e["day"],
-                       '<meta http-equiv="refresh" content="0;url=/%s/">' % e["slug"])
+        # Only entries inside the year have a day number to be aliased by.
+        # Formatting None with %d is what took the whole build down.
+        if e["day"]:
+            total += write("day/%d/index.html" % e["day"],
+                           '<meta http-equiv="refresh" content="0;url=/%s/">' % e["slug"])
 
     # index
     recent = entries[-12:][::-1]
     items = "".join(
-        '<li><a href="/%s/">%s</a><span class="n">%d</span></li>'
-        % (e["slug"], html.escape(e["title"]), e["day"]) for e in recent)
+        '<li><a href="/%s/">%s</a><span class="n">%s</span></li>'
+        % (e["slug"], html.escape(e["title"]), e["day"] or "&middot;")
+        for e in recent)
     ctx = dict(base, title=SITE, recent=items or
                '<li class="empty">nothing yet</li>')
     total += write("index.html", render(read(os.path.join(pages, "index.html")), ctx))
 
     # archive
     rows = ""
+    for e in entries:
+        if not e["day"]:
+            rows += ('<li><span class="n">&middot;</span>'
+                     '<a href="/%s/">%s</a></li>'
+                     % (e["slug"], html.escape(e["title"])))
     for n in range(1, DAY_COUNT + 1):
         d = DAY_ONE + timedelta(days=n - 1)
         e = next((x for x in entries if x["date"] == d), None)
@@ -384,7 +393,7 @@ def main():
     total += write("archive/index.html",
                    render(read(os.path.join(pages, "archive.html")), ctx))
     total += write("archive.txt", "\n\n\n".join(
-        "%s\nDay %d  %s\n%s\n\n%s" % ("=" * 60, e["day"],
+        "%s\nDay %s  %s\n%s\n\n%s" % ("=" * 60, e["day"] or "-",
                                       e["date"].isoformat(), e["title"], e["body"])
         for e in entries))
 

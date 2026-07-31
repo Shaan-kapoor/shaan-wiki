@@ -185,7 +185,7 @@ window.SW = (function () {
     dayNumber: function () {
       var t = todayIST();
       return Math.floor((Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) -
-        Date.UTC(2026, 7, 1)) / 86400000) + 1;
+        Date.UTC(2026, 6, 31)) / 86400000) + 1;   // day one is 31 July 2026
     }
   };
 })();

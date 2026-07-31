@@ -2,7 +2,7 @@
 
 **One year. One entry a day. Then it stops.**
 
-A wiki that runs from 1 August 2026 to 31 July 2027 and then does not run any more.
+A wiki that runs from 31 July 2026 to 30 July 2027 and then does not run any more.
 Three hundred and sixty five slots. Every day you fill one or you do not, and either way
 the record stands.
 
