@@ -30,10 +30,11 @@
 <div class="wrap">
   <header><h1>matched to the current intro</h1><button id="all">replay all</button></header>
   <p class="note">
-    Same gather, same circular field, same fade out. The live intro is 19 by 19 inside a
-    circle, about 283 dots, each 2.2 to 4.4 pixels. The name needs 47 columns, so the field
-    thins to every third cell: about 200 field dots plus 92 name dots, at the same pixel
-    weight. Click any card to replay.
+    Same gather, same field, same fade out, same 335 dots at the same pixel weight.
+    The middle card shows the bug: the breath phase depends on distance from centre,
+    and its coefficient was tuned for a 19 cell lattice. Carried over to 47 cells it
+    spans 2.07 cycles instead of 0.81, which paints a bullseye. The right card
+    normalises it. Click any card to replay.
   </p>
   <div class="grid" id="grid"></div>
 </div>
@@ -77,6 +78,7 @@ function Intro(canvas, opts) {
   var dpr = Math.min(window.devicePixelRatio || 1, 2);
   var N = opts.N, NAME = opts.withName ? nameSet(N) : {};
   var size = 0, cx = 0, cy = 0, dots = [], t0 = 0, raf = null;
+  var maxd = Math.hypot((N - 1) / 2, (N - 1) / 2);
   var ptr = { x: -1e4, y: -1e4, on: false };
 
   function measure() {
@@ -89,7 +91,7 @@ function Intro(canvas, opts) {
 
   function build() {
     dots = [];
-    var mid = (N - 1) / 2, maxd = Math.hypot(mid, mid);
+    var mid = (N - 1) / 2;
     for (var iy = 0; iy < N; iy++) for (var ix = 0; ix < N; ix++) {
       var d = Math.hypot(ix - mid, iy - mid);
       if (d > maxd * .96) continue;                    // the circular field
@@ -132,7 +134,11 @@ function Intro(canvas, opts) {
         }
       }
 
-      var breath = .6 + .4 * Math.sin(t * 1.15 - p.d * .4);
+      /* The breath phase depends on distance from centre, so it paints rings.
+         At 19 cells the coefficient 0.4 spans 0.81 of a cycle: one soft ring.
+         At 47 cells it spans 2.07 cycles, which is a bullseye. Normalising by
+         maxd keeps the ring count fixed however large the lattice gets. */
+      var breath = .6 + .4 * Math.sin(t * 1.15 - (p.d / maxd) * opts.rings);
       var r, a;
       if (p.isName) {
         r = gap * opts.nameR * ease * (.78 + .22 * breath) * out;
@@ -175,12 +181,12 @@ function Intro(canvas, opts) {
 }
 
 var CARDS = [
-  [{ N:19, step:1, withName:false, fieldR:.20, fieldA:1, nameR:.20 },
-   "the current intro", "19 by 19, circular, no name. The thing being matched."],
-  [{ N:47, step:3, withName:true, fieldR:.48, fieldA:.62, nameR:.34 },
-   "matched &middot; open letters", "Field every third cell at the same pixel weight. Name dots clear of each other."],
-  [{ N:47, step:3, withName:true, fieldR:.48, fieldA:.62, nameR:.46 },
-   "matched &middot; solid letters", "Same field. Name dots grown until they almost touch, so the word reads as one mass."]
+  [{ N:19, step:1, withName:false, fieldR:.20, fieldA:1, nameR:.20, rings:5.09 },
+   "the current intro", "19 by 19, no name. The thing being matched."],
+  [{ N:47, step:3, withName:true, fieldR:.48, fieldA:.62, nameR:.34, rings:13.01 },
+   "before &middot; unscaled breath", "The coefficient carried over from 19 cells. Two full rings, a bullseye inside the field."],
+  [{ N:47, step:3, withName:true, fieldR:.48, fieldA:.62, nameR:.34, rings:5.09 },
+   "after &middot; normalised breath", "Same phase span as the live intro: 0.81 of a cycle, one soft ring, no circle inside."]
 ];
 
 var made = [], grid = document.getElementById("grid");
