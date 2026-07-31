@@ -7,17 +7,12 @@ Three hundred and sixty five slots. Every day you fill one or you do not, and ei
 the record stands.
 
 ```
-            ████████  ████      ██████          ██        ██        ██        ██  ██  ██    ██
-              ██████  ██    ██    ████      ████    ██    ██      ██      ██  ██  ██    ██  ██
-            ██        ██    ██  ██    ██  ██    ██  ████  ██      ██      ██  ██  ██  ██    ██
-              ████    ████████  ████████  ████████  ██  ████      ██  ██  ██  ██  ████      ██
-                  ██  ██    ██  ██    ██  ██    ██  ██    ██      ████  ████  ██  ██  ██    ██
-            ██████    ██    ██  ██    ██  ██    ██  ██    ██  ██  ██      ██  ██  ██    ██  ██
-████  ██  ██████          ████    ████    ██  ████████  ██      ██    ██              ██  ██    ████    ██
+ ▄▄▄▄ ▄▄ ▄▄  ▄▄▄   ▄▄▄  ▄▄  ▄▄       ▄▄   ▄▄ ▄▄ ▄▄ ▄▄ ▄▄ 
+███▄▄ ██▄██ ██▀██ ██▀██ ███▄██       ██ ▄ ██ ██ ██▄█▀ ██ 
+▄▄██▀ ██ ██ ██▀██ ██▀██ ██ ▀██   ▄    ▀█▀█▀  ██ ██ ██ ██
 ```
 
-<sub>Seven rows, one per weekday. Fifty three columns, one per week.
-The name is not a logo. It is three hundred and sixty five days.</sub>
+<sub>Three hundred and sixty five days, seven rows of them, one column a week.</sub>
 
 ---
 
