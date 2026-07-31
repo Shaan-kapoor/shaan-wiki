@@ -1,0 +1,185 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>shaan.wiki - field density</title>
+<style>
+  :root { --bg:#000; --fg:#fff; --quiet:#6a6a6a; --hush:#242424; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:30px 22px 90px; background:var(--bg); color:var(--quiet);
+         font:400 12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  header { display:flex; justify-content:space-between; align-items:baseline; gap:20px;
+           margin-bottom:26px; flex-wrap:wrap; }
+  h1 { font:400 12px/1 ui-monospace,Menlo,monospace; letter-spacing:.28em;
+       text-transform:uppercase; color:var(--fg); margin:0; }
+  button { font:inherit; letter-spacing:.18em; text-transform:uppercase; background:none;
+           border:1px solid var(--hush); color:var(--quiet); padding:8px 14px;
+           cursor:pointer; border-radius:3px; }
+  button:hover { color:var(--fg); border-color:var(--fg); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(430px,1fr)); gap:24px; }
+  .card { border:1px solid var(--hush); border-radius:4px; overflow:hidden; cursor:pointer; }
+  .card canvas, .card img { display:block; width:100%; height:400px; background:#000; }
+  .cap { padding:11px 14px 13px; border-top:1px solid var(--hush); }
+  .cap b { color:var(--fg); font-weight:400; letter-spacing:.16em; text-transform:uppercase;
+           display:block; margin-bottom:4px; }
+  .cap span { color:var(--quiet); letter-spacing:.04em; text-transform:none; font-size:11.5px;
+              line-height:1.55; display:block; }
+  .note { margin:0 0 26px; letter-spacing:.04em; text-transform:none; font-size:12px;
+          line-height:1.7; max-width:74ch; }
+</style>
+<body>
+<div class="wrap">
+  <header><h1>field density</h1><button id="all">replay all</button></header>
+  <p class="note">
+    Capitals, gather, square field. The only thing changing is how much lattice
+    surrounds the name. Click any card to replay it.
+  </p>
+  <div class="grid" id="grid"></div>
+</div>
+<script>
+var CAPS = {
+  "s":[".###","#...",".##.","...#","###."],
+  "h":["#..#","#..#","####","#..#","#..#"],
+  "a":[".##.","#..#","####","#..#","#..#"],
+  "n":["#..#","##.#","#.##","#..#","#..#"],
+  ".":[".",".",".",".","#"],
+  "w":["#...#","#...#","#.#.#","##.##","#...#"],
+  "i":["#","#","#","#","#"],
+  "k":["#..#","#.#.","##..","#.#.","#..#"]
+};
+var WORD = "shaan.wiki", N = 47;
+
+var NAME = (function () {
+  var w = -1, i;
+  for (i = 0; i < WORD.length; i++) w += CAPS[WORD[i]][0].length + 1;
+  var x = Math.round((N - w) / 2), y0 = Math.round((N - 5) / 2), set = {};
+  for (i = 0; i < WORD.length; i++) {
+    var g = CAPS[WORD[i]];
+    for (var r = 0; r < 5; r++) for (var c = 0; c < g[r].length; c++)
+      if (g[r][c] === "#") set[(x + c) + "," + (y0 + r)] = 1;
+    x += g[0].length + 1;
+  }
+  return set;
+})();
+
+function rnd(i) { var v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); }
+var clamp01 = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
+var easeOut = function (p) { return 1 - Math.pow(1 - p, 3); };
+
+/* Which lattice cells carry a field dot. The name is always at full
+   resolution; only the surround thins out. */
+var KEEP = {
+  full:    function () { return true; },
+  half:    function (x, y) { return (x + y) % 2 === 0; },
+  quarter: function (x, y) { return x % 2 === 0 && y % 2 === 0; },
+  ninth:   function (x, y) { return x % 3 === 0 && y % 3 === 0; },
+  ring:    function (x, y) { var m = (N - 1) / 2;
+                             return Math.hypot(x - m, y - m) > 9 && (x + y) % 2 === 0; },
+  none:    function () { return false; }
+};
+
+function Field(canvas, density) {
+  var ctx = canvas.getContext("2d");
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var W = 0, H = 0, cell = 0, ox = 0, oy = 0, pts = [], t0 = 0, raf = null, life = 3200;
+  var ptr = { x: -1e4, y: -1e4, on: false };
+
+  function size() {
+    W = canvas.clientWidth; H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cell = Math.min(W, H) / (N + 2);
+    ox = (W - cell * (N - 1)) / 2;
+    oy = (H - cell * (N - 1)) / 2;
+  }
+  function build() {
+    pts = [];
+    var mid = (N - 1) / 2, keep = KEEP[density];
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+      var isName = !!NAME[x + "," + y];
+      if (!isName && !keep(x, y)) continue;
+      var i = y * N + x, ang = rnd(i) * 6.2832, far = .45 + rnd(i + 7919) * .8;
+      pts.push({ gx: x, gy: y, isName: isName,
+        ox: Math.cos(ang) * far, oy: Math.sin(ang) * far,
+        delay: (Math.hypot(x - mid, y - mid) / mid) * 620 + rnd(i) * 240 });
+    }
+  }
+  function draw(age) {
+    ctx.clearRect(0, 0, W, H);
+    for (var k = 0; k < pts.length; k++) {
+      var p = pts[k];
+      var l = clamp01((age - p.delay) / 700), e = easeOut(l);
+      if (l <= 0) continue;
+      var hx = ox + p.gx * cell, hy = oy + p.gy * cell;
+      var x = hx + p.ox * W * (1 - e), y = hy + p.oy * H * (1 - e);
+      var r = cell * (p.isName ? .34 : .12) * e;
+      var a = e * (p.isName ? 1 : .17);
+      if (ptr.on) {
+        var dx = x - ptr.x, dy = y - ptr.y, pd = Math.hypot(dx, dy);
+        var reach = Math.min(W, H) * .3;
+        if (pd < reach && pd > .01) {
+          var f = (1 - pd / reach) * cell * 1.8;
+          x += dx / pd * f; y += dy / pd * f;
+        }
+      }
+      if (r <= .1 || a <= .01) continue;
+      ctx.globalAlpha = Math.min(1, a);
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832);
+      ctx.fillStyle = "#fff"; ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+  function frame(now) { var age = now - t0; draw(age); if (age < life) raf = requestAnimationFrame(frame); }
+  this.count = function () { return pts.length; };
+  this.play = function () {
+    cancelAnimationFrame(raf); size(); build();
+    t0 = performance.now(); raf = requestAnimationFrame(frame);
+  };
+  this.renderAt = function (age) {
+    cancelAnimationFrame(raf); size(); build(); draw(age);
+    requestAnimationFrame(function () { draw(age); requestAnimationFrame(function () { draw(age); }); });
+  };
+  canvas.addEventListener("pointermove", function (e) {
+    var b = canvas.getBoundingClientRect();
+    ptr.x = e.clientX - b.left; ptr.y = e.clientY - b.top; ptr.on = true;
+  });
+  canvas.addEventListener("pointerleave", function () { ptr.on = false; });
+  window.addEventListener("resize", size);
+}
+
+var MODES = [
+  ["full",    "a &middot; every cell",      "2209 dots. What you have now."],
+  ["half",    "b &middot; every other",     "Checkered. Half the field, same square."],
+  ["quarter", "c &middot; every second",    "A quarter of the field, at half the pitch of the name."],
+  ["ninth",   "d &middot; every third",     "A ninth. The field becomes a hint rather than a surface."],
+  ["ring",    "e &middot; cleared centre",  "Thinned, and cleared where the name sits, so nothing crowds it."],
+  ["none",    "f &middot; name only",       "No field at all. Only the name arrives."]
+];
+var made = [], grid = document.getElementById("grid");
+MODES.forEach(function (m) {
+  var el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = '<canvas></canvas><div class="cap"><b>' + m[1] + '</b><span>' + m[2] + '</span></div>';
+  grid.appendChild(el);
+  var f = new Field(el.querySelector("canvas"), m[0]);
+  made.push({ f: f, el: el });
+  el.addEventListener("click", function () { f.play(); });
+});
+function playAll() { made.forEach(function (m, n) { setTimeout(function () { m.f.play(); }, n * 80); }); }
+document.getElementById("all").addEventListener("click", playAll);
+
+var q = new URLSearchParams(location.search);
+window.addEventListener("load", function () {
+  var at = q.get("frame");
+  if (at === null) { playAll(); return; }
+  made.forEach(function (m) {
+    m.f.renderAt(+at);
+    m.el.querySelector(".cap span").textContent += "  (" + m.f.count() + " dots)";
+  });
+  if (q.get("still")) setTimeout(function () {
+    document.querySelectorAll("canvas").forEach(function (c) {
+      var img = new Image(); img.src = c.toDataURL("image/png");
+      c.parentNode.replaceChild(img, c);
+    });
+  }, 800);
+});
+</script>
