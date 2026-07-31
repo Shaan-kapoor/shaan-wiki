@@ -192,6 +192,14 @@ def minify_css(css):
     return css.strip()
 
 
+def redirect(slug):
+    """A stub that works without JavaScript and tells crawlers the real home."""
+    return ('<!doctype html><meta charset="utf-8">'
+            '<meta http-equiv="refresh" content="0;url=/%s/">'
+            '<link rel="canonical" href="/%s/">'
+            '<title>%s</title><a href="/%s/">%s</a>' % (slug, slug, slug, slug, slug))
+
+
 def write(relpath, content):
     path = os.path.join(OUT, relpath)
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -271,6 +279,7 @@ def load_entries():
             "slug": slugify(title),
             "gym": bool(meta.get("gym")),
             "tags": meta.get("tags") or [],
+            "aliases": meta.get("aliases") or [],
             "body": body,
             "words": len(body.split()),
         })
@@ -356,11 +365,21 @@ def main():
         total += write("%s/index.html" % e["slug"],
                        render(read(os.path.join(pages, "entry.html")), ctx))
         total += write("%s.txt" % e["slug"], e["body"])
+        # Every address this entry has ever had keeps working. A title change
+        # moves the page, and a wiki that breaks its own links is broken.
+        for old in e["aliases"]:
+            if old and old != e["slug"]:
+                total += write("%s/index.html" % old, redirect(e["slug"]))
+
+        # The date is the one address that can never change, because the
+        # filename is the date and the date is the entry's identity.
+        total += write("%s/index.html" % e["date"].strftime("%Y/%m/%d"),
+                       redirect(e["slug"]))
+
         # Only entries inside the year have a day number to be aliased by.
         # Formatting None with %d is what took the whole build down.
         if e["day"]:
-            total += write("day/%d/index.html" % e["day"],
-                           '<meta http-equiv="refresh" content="0;url=/%s/">' % e["slug"])
+            total += write("day/%d/index.html" % e["day"], redirect(e["slug"]))
 
     # index
     recent = entries[-12:][::-1]

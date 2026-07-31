@@ -8,6 +8,7 @@
 
   var $ = function (id) { return document.getElementById(id); };
   var sha = null, saveTimer = null, stateTimer = null;
+  var aliases = [], loadedSlug = null;
 
   var DATE = SW.isoDate(SW.todayIST());
   var PATH = "entries/" + DATE + ".md";
@@ -48,10 +49,23 @@
     } catch (e) {}
   }
 
+  function slugify(s) {
+    return s.toLowerCase().replace(/[^\w\s-]/g, "").trim()
+      .replace(/[\s_]+/g, "-").replace(/-{2,}/g, "-").replace(/^-|-$/g, "");
+  }
+
   function compose() {
-    return "---\ntitle: " + ($("title").value.trim() || DATE) +
+    var title = $("title").value.trim() || DATE;
+    /* Retitling moves the page, so the address it used to live at is recorded
+       and the build keeps serving a redirect from it. */
+    var now = slugify(title), all = aliases.slice();
+    if (loadedSlug && loadedSlug !== now && all.indexOf(loadedSlug) < 0) {
+      all.push(loadedSlug);
+    }
+    return "---\ntitle: " + title +
       "\ndate: " + DATE + "\nday: " + SW.dayNumber() +
       "\ngym: " + $("gym").getAttribute("aria-pressed") +
+      (all.length ? "\naliases: [" + all.join(", ") + "]" : "") +
       "\n---\n\n" + $("body").value.trim() + "\n";
   }
 
@@ -98,6 +112,10 @@
             if (i > 0) meta[l.slice(0, i).trim()] = l.slice(i + 1).trim();
           });
           $("title").value = meta.title || "";
+          loadedSlug = meta.title ? slugify(meta.title) : null;
+          aliases = (meta.aliases || "").replace(/[\[\]]/g, "")
+                     .split(",").map(function (x) { return x.trim(); })
+                     .filter(Boolean);
           $("body").value = m ? txt.slice(m[0].length).trim() : txt;
           $("gym").setAttribute("aria-pressed", meta.gym === "true" ? "true" : "false");
         }
