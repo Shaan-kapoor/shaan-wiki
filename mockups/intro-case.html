@@ -1,0 +1,245 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>shaan.wiki - uppercase or lowercase</title>
+<style>
+  :root { --bg:#000; --fg:#fff; --quiet:#6a6a6a; --hush:#242424; }
+  * { box-sizing:border-box; }
+  body { margin:0; padding:30px 22px 90px; background:var(--bg); color:var(--quiet);
+         font:400 12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace; letter-spacing:.1em; }
+  .wrap { max-width:1180px; margin:0 auto; }
+  header { display:flex; justify-content:space-between; align-items:baseline; gap:20px;
+           margin-bottom:26px; flex-wrap:wrap; }
+  h1 { font:400 12px/1 ui-monospace,Menlo,monospace; letter-spacing:.28em;
+       text-transform:uppercase; color:var(--fg); margin:0; }
+  h2 { font:400 11px/1 ui-monospace,Menlo,monospace; letter-spacing:.24em;
+       text-transform:uppercase; color:var(--quiet); margin:38px 0 14px; }
+  button { font:inherit; letter-spacing:.18em; text-transform:uppercase; background:none;
+           border:1px solid var(--hush); color:var(--quiet); padding:8px 14px;
+           cursor:pointer; border-radius:3px; }
+  button:hover { color:var(--fg); border-color:var(--fg); }
+  .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(430px,1fr)); gap:24px; }
+  .card { border:1px solid var(--hush); border-radius:4px; overflow:hidden; cursor:pointer; }
+  .card canvas, .card img { display:block; width:100%; height:400px; background:#000; }
+  .cap { padding:11px 14px 13px; border-top:1px solid var(--hush); }
+  .cap b { color:var(--fg); font-weight:400; letter-spacing:.16em; text-transform:uppercase;
+           display:block; margin-bottom:4px; }
+  .cap span { color:var(--quiet); letter-spacing:.04em; text-transform:none; font-size:11.5px;
+              line-height:1.55; display:block; }
+  .note { margin:0 0 8px; letter-spacing:.04em; text-transform:none; font-size:12px;
+          line-height:1.7; max-width:74ch; }
+</style>
+<body>
+<div class="wrap">
+  <header><h1>uppercase or lowercase</h1><button id="all">replay motion</button></header>
+  <p class="note">
+    Square field, name on one line, hard dots. Caps need five rows. Lowercase needs
+    seven, because ascenders have to go somewhere. Both fit, so it is a real choice.
+  </p>
+
+  <h2>at rest</h2>
+  <div class="grid" id="rest"></div>
+
+  <h2>in motion</h2>
+  <div class="grid" id="moving"></div>
+</div>
+<script>
+/* ---------------------------------------------------------------- typefaces */
+
+/* Caps. Every glyph fills all five rows, which is why dot matrix displays,
+   departure boards and LED signs have always been uppercase: at this
+   resolution there is no ascender problem to solve. */
+var CAPS = {
+  "s":[".###","#...",".##.","...#","###."],
+  "h":["#..#","#..#","####","#..#","#..#"],
+  "a":[".##.","#..#","####","#..#","#..#"],
+  "n":["#..#","##.#","#.##","#..#","#..#"],
+  ".":[".",".",".",".","#"],
+  "w":["#...#","#...#","#.#.#","##.##","#...#"],
+  "i":["#","#","#","#","#"],
+  "k":["#..#","#.#.","##..","#.#.","#..#"]
+};
+
+/* Lowercase. Seven rows: two for ascenders, five for the x-height. Costs two
+   rows of field and buys the shape the site actually uses. */
+var LOWER = {
+  "s":["....","....",".###","#...",".##.","...#","###."],
+  "h":["#...","#...","#...","###.","#..#","#..#","#..#"],
+  "a":["....","....",".##.","...#",".###","#..#",".###"],
+  "n":["....","....","###.","#..#","#..#","#..#","#..#"],
+  ".":[".",".",".",".",".",".","#"],
+  "w":[".....",".....","#...#","#...#","#.#.#","##.##",".#.#."],
+  "i":["#",".","#","#","#","#","#"],
+  "k":["#...","#...","#..#","#.#.","##..","#.#.","#..#"]
+};
+
+var WORD = "shaan.wiki";
+var N = 47;                       // square field, 47 x 47
+
+function layout(font) {
+  var rows = font["h"].length, w = -1, i;
+  for (i = 0; i < WORD.length; i++) w += font[WORD[i]][0].length + 1;
+  var x = Math.round((N - w) / 2), y0 = Math.round((N - rows) / 2), set = {};
+  for (i = 0; i < WORD.length; i++) {
+    var g = font[WORD[i]];
+    for (var r = 0; r < rows; r++) for (var c = 0; c < g[r].length; c++)
+      if (g[r][c] === "#") set[(x + c) + "," + (y0 + r)] = 1;
+    x += g[0].length + 1;
+  }
+  return set;
+}
+var SETS = { caps: layout(CAPS), lower: layout(LOWER) };
+
+/* -------------------------------------------------------------------- utils */
+function rnd(i) { var v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); }
+function noise(x, y, t) {
+  return Math.sin(x * .72 + t) * Math.cos(y * .61 - t * .8) +
+         .5 * Math.sin((x + y) * .43 + t * 1.27);
+}
+var clamp01 = function (v) { return v < 0 ? 0 : v > 1 ? 1 : v; };
+var easeOut = function (p) { return 1 - Math.pow(1 - p, 3); };
+
+/* ----------------------------------------------------------------- renderer */
+function Field(canvas, kase, mode) {
+  var ctx = canvas.getContext("2d");
+  var dpr = Math.min(window.devicePixelRatio || 1, 2);
+  var W = 0, H = 0, cell = 0, ox = 0, oy = 0, pts = [], t0 = 0, raf = null, life = 3200;
+  var NAME = SETS[kase];
+  var ptr = { x: -1e4, y: -1e4, on: false };
+
+  function size() {
+    W = canvas.clientWidth; H = canvas.clientHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cell = Math.min(W, H) / (N + 2);        // square cells in a square field
+    ox = (W - cell * (N - 1)) / 2;
+    oy = (H - cell * (N - 1)) / 2;
+  }
+
+  function build() {
+    pts = [];
+    var mid = (N - 1) / 2;
+    for (var y = 0; y < N; y++) for (var x = 0; x < N; x++) {
+      var i = y * N + x, ang = rnd(i) * 6.2832, far = .45 + rnd(i + 7919) * .8;
+      pts.push({
+        gx: x, gy: y, i: i, isName: !!NAME[x + "," + y],
+        d: Math.hypot(x - mid, y - mid),
+        ox: Math.cos(ang) * far, oy: Math.sin(ang) * far,
+        delay: mode === "gather" ? (Math.hypot(x - mid, y - mid) / mid) * 620 + rnd(i) * 240
+                                 : rnd(i) * 260
+      });
+    }
+  }
+
+  function draw(age) {
+    var t = age / 1000;
+    ctx.clearRect(0, 0, W, H);
+    for (var k = 0; k < pts.length; k++) {
+      var p = pts[k];
+      var hx = ox + p.gx * cell, hy = oy + p.gy * cell;
+      var l = clamp01((age - p.delay) / 700), e = easeOut(l);
+      if (l <= 0) continue;
+      var x = hx, y = hy, r, a;
+
+      if (mode === "rest") {
+        x = hx; y = hy;
+        r = cell * (p.isName ? .34 : .12);
+        a = p.isName ? 1 : .17;
+      } else if (mode === "gather") {
+        x = hx + p.ox * W * (1 - e);
+        y = hy + p.oy * H * (1 - e);
+        r = cell * (p.isName ? .34 : .12) * e;
+        a = e * (p.isName ? 1 : .17);
+      } else {                                    // surface
+        var reveal = clamp01((age - 800) / 1500);
+        var drift = cell * .3 * (1 - reveal);
+        x = hx + noise(p.gx * .5, p.gy * .5, t * .34) * drift;
+        y = hy + noise(p.gy * .5, p.gx * .5, t * .31) * drift;
+        r = cell * (.15 + (p.isName ? .19 : -.04) * reveal) * e;
+        a = e * (p.isName ? .22 + .78 * reveal : .22 - .05 * reveal);
+      }
+
+      if (ptr.on) {
+        var dx = x - ptr.x, dy = y - ptr.y, pd = Math.hypot(dx, dy);
+        var reach = Math.min(W, H) * .3;
+        if (pd < reach && pd > .01) {
+          var f = (1 - pd / reach) * cell * 1.8;
+          x += dx / pd * f; y += dy / pd * f;
+        }
+      }
+      if (r <= .1 || a <= .01) continue;
+      ctx.globalAlpha = Math.min(1, a);
+      ctx.beginPath(); ctx.arc(x, y, r, 0, 6.2832);
+      ctx.fillStyle = "#fff"; ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  function frame(now) {
+    var age = now - t0; draw(age);
+    if (age < life) raf = requestAnimationFrame(frame);
+  }
+  this.play = function () {
+    if (mode === "rest") { this.renderAt(9999); return; }
+    cancelAnimationFrame(raf); size(); build();
+    t0 = performance.now(); raf = requestAnimationFrame(frame);
+  };
+  this.renderAt = function (age) {
+    cancelAnimationFrame(raf); size(); build();
+    /* Drawn once synchronously so the bitmap exists immediately, then again in
+       a frame so it reaches the compositor. Under virtual time a timer can fire
+       before any animation frame does, and a canvas rasterised at that moment
+       is empty. */
+    draw(age);
+    requestAnimationFrame(function () {
+      draw(age); requestAnimationFrame(function () { draw(age); });
+    });
+  };
+  canvas.addEventListener("pointermove", function (e) {
+    var b = canvas.getBoundingClientRect();
+    ptr.x = e.clientX - b.left; ptr.y = e.clientY - b.top; ptr.on = true;
+  });
+  canvas.addEventListener("pointerleave", function () { ptr.on = false; });
+  window.addEventListener("resize", size);
+}
+
+/* --------------------------------------------------------------------- page */
+var made = [];
+function card(host, kase, mode, title, blurb) {
+  var el = document.createElement("div");
+  el.className = "card";
+  el.innerHTML = '<canvas></canvas><div class="cap"><b>' + title + '</b><span>' + blurb + '</span></div>';
+  document.getElementById(host).appendChild(el);
+  var f = new Field(el.querySelector("canvas"), kase, mode);
+  made.push({ f: f, mode: mode });
+  el.addEventListener("click", function () { f.play(); });
+}
+
+card("rest", "caps",  "rest", "uppercase &middot; five rows",
+     "Uniform height, nothing to encode above or below. The most legible thing a lattice can do.");
+card("rest", "lower", "rest", "lowercase &middot; seven rows",
+     "Ascenders on h, k and the dot of the i. Two more rows, and the shape the site actually uses.");
+card("moving", "caps",  "gather",  "uppercase &middot; gather", "Flies in from scatter.");
+card("moving", "lower", "gather",  "lowercase &middot; gather", "Flies in from scatter.");
+card("moving", "caps",  "surface", "uppercase &middot; surface", "Surfaces out of a drifting field.");
+card("moving", "lower", "surface", "lowercase &middot; surface", "Surfaces out of a drifting field.");
+
+function playAll() {
+  made.forEach(function (m, n) {
+    setTimeout(function () { m.mode === "rest" ? m.f.renderAt(9999) : m.f.play(); }, n * 80);
+  });
+}
+document.getElementById("all").addEventListener("click", playAll);
+
+var q = new URLSearchParams(location.search);
+window.addEventListener("load", function () {
+  var at = q.get("frame");
+  if (at === null) { playAll(); return; }
+  made.forEach(function (m) { m.f.renderAt(m.mode === "rest" ? 9999 : +at); });
+  if (q.get("still")) setTimeout(function () {
+    document.querySelectorAll("canvas").forEach(function (c) {
+      var img = new Image(); img.src = c.toDataURL("image/png");
+      c.parentNode.replaceChild(img, c);
+    });
+  }, 800);
+});
+</script>
