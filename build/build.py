@@ -111,7 +111,12 @@ def markdown(text, wikilinks=None, known=None):
 
     def flush_para():
         if para:
-            out.append("<p>%s</p>" % inline_md(" ".join(para), wikilinks, known))
+            # One press of Enter is one paragraph. Requiring a blank line is a
+            # convention from authoring markdown files, and this is a plain
+            # textarea: nobody writing prose in one presses Enter twice. It had
+            # been collapsing thirteen lines into a single slab of text.
+            for line in para:
+                out.append("<p>%s</p>" % inline_md(line, wikilinks, known))
             del para[:]
 
     def flush_list():
