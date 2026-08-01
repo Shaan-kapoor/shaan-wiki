@@ -1,10 +1,21 @@
+<div id="gate" class="gate" hidden>
+  <input id="pw" type="password" placeholder="&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;"
+         autocomplete="current-password" autocapitalize="off" autocorrect="off"
+         spellcheck="false">
+  <span id="gatemsg" class="meta"></span>
+</div>
+
 <div id="todaywrap">
-  <button id="today" class="bigtick" type="button" aria-pressed="false" aria-label="Gym today">
+  <button id="today" class="bigtick" type="button" aria-pressed="false"
+          aria-label="Gym today" hidden>
     <span class="box">
       <svg class="check" viewBox="0 0 24 24" fill="none" stroke="currentColor"
            stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"
            aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
     </span>
   </button>
-  <span class="meta">{{ today_label }}</span>
+  <div class="ticklabel">
+    <span class="meta">{{ today_label }}</span>
+    <span id="state" class="meta fade"></span>
+  </div>
 </div>

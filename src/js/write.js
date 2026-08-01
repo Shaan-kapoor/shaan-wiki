@@ -42,8 +42,7 @@
   function saveDraft() {
     try {
       localStorage.setItem(DRAFT, JSON.stringify({
-        t: $("title").value, b: $("body").value,
-        g: $("gym").getAttribute("aria-pressed") === "true"
+        t: $("title").value, b: $("body").value
       }));
       say("saved");
     } catch (e) {}
@@ -64,7 +63,6 @@
     }
     return "---\ntitle: " + title +
       "\ndate: " + DATE + "\nday: " + SW.dayNumber() +
-      "\ngym: " + $("gym").getAttribute("aria-pressed") +
       (all.length ? "\naliases: [" + all.join(", ") + "]" : "") +
       "\n---\n\n" + $("body").value.trim() + "\n";
   }
@@ -96,7 +94,6 @@
     if (draft) {
       $("title").value = draft.t || "";
       $("body").value = draft.b || "";
-      $("gym").setAttribute("aria-pressed", draft.g ? "true" : "false");
     }
 
     try {
@@ -117,12 +114,7 @@
                      .split(",").map(function (x) { return x.trim(); })
                      .filter(Boolean);
           $("body").value = m ? txt.slice(m[0].length).trim() : txt;
-          $("gym").setAttribute("aria-pressed", meta.gym === "true" ? "true" : "false");
         }
-      }
-      if (!draft && !cur) {
-        var g = await SW.getGym();
-        $("gym").setAttribute("aria-pressed", g ? "true" : "false");
       }
     } catch (e) { say("offline", true); }
 
@@ -144,18 +136,6 @@
     if (e.key === "Enter") { e.preventDefault(); $("body").focus(); }
   });
 
-  /* The tick commits immediately. Going to the gym and not writing that day
-     still has to count, so it cannot wait for Publish. */
-  $("gym").addEventListener("click", async function () {
-    var on = this.getAttribute("aria-pressed") !== "true";
-    this.setAttribute("aria-pressed", on ? "true" : "false");
-    SW.localSet(on);
-    saveDraft();
-    try {
-      await SW.setGym(on);
-    } catch (e) { /* held locally, flushed on the next load */ }
-  });
-
   $("pub").addEventListener("click", async function () {
     if (!$("body").value.trim()) return;
     $("pub").disabled = true;
@@ -163,7 +143,6 @@
     try {
       sha = await SW.put(PATH, compose(),
         (sha ? "Edit" : "Write") + " " + DATE, sha);
-      await SW.setGym($("gym").getAttribute("aria-pressed") === "true");
       try { localStorage.removeItem(DRAFT); } catch (e) {}
       say("published");
     } catch (err) {

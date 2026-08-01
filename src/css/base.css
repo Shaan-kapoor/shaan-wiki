@@ -188,6 +188,13 @@ li::marker { color: var(--quiet); }
    The fill springs out of the centre and the check draws itself, so the mark
    is made rather than merely displayed. */
 #todaywrap { display: flex; align-items: center; gap: 20px; margin: 4px 0 52px; }
+.ticklabel { display: flex; flex-direction: column; gap: 5px; }
+#state { transition: opacity .25s ease; color: var(--fg); }
+#state.fade { opacity: 0; }
+/* While the write is in flight the tick holds still and dims, so a tap that
+   has not landed yet cannot be mistaken for one that has. */
+.bigtick.saving .box { opacity: .55; }
+.bigtick.saving .box::before { transition-duration: .18s; }
 .bigtick { border: 0; background: none; padding: 0; cursor: pointer; }
 .bigtick .box {
   position: relative; overflow: hidden;

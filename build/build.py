@@ -277,7 +277,6 @@ def load_entries():
             "day": day_number(d),
             "title": title,
             "slug": slugify(title),
-            "gym": bool(meta.get("gym")),
             "tags": meta.get("tags") or [],
             "aliases": meta.get("aliases") or [],
             "body": body,
@@ -307,7 +306,10 @@ def load_gym():
 def main():
     today = today_ist()
     entries = load_entries()
-    gym_days = load_gym() | {e["date"] for e in entries if e["gym"]}
+    # data/gym.json is the only record of the gym. It used to be unioned with
+    # a gym flag in each entry's frontmatter, which meant an entry could switch
+    # a day on but gym.json could never switch it back off.
+    gym_days = load_gym()
     written = {e["date"] for e in entries}
     known = {e["slug"] for e in entries}
 
