@@ -51,13 +51,18 @@ window.SW = (function () {
     return token;
   }
 
+  /* GitHub answers contents requests with "cache-control: private, max-age=60".
+     Read one twice inside a minute and the browser serves the first response
+     from cache, so you write using a sha that is already out of date and the
+     write is rejected. no-store forces a real request every time. */
   async function gh(path, opts) {
     var r = await fetch(API + path, Object.assign({
+      cache: "no-store",
       headers: { Authorization: "Bearer " + token,
                  Accept: "application/vnd.github+json" }
     }, opts || {}));
     if (r.status === 404) return null;
-    if (!r.ok) throw new Error(r.status);
+    if (!r.ok) throw new Error(String(r.status));
     return r.json();
   }
 
@@ -76,23 +81,48 @@ window.SW = (function () {
 
   function decode(b) { return new TextDecoder().decode(bytes(b.replace(/\s/g, ""))); }
 
-  /* Marking the gym writes straight away rather than waiting for an entry to be
-     published. Going to the gym and not writing that day has to still count. */
-  async function setGym(on) {
+  /* The sha returned by a write is the one the next write needs, so it is kept
+     rather than re-read. A conflict can still happen if another device wrote in
+     between, so that case re-reads and tries once more instead of giving up. */
+  var gymSha = null, gymData = null;
+
+  async function loadGym() {
     var cur = await gh("data/gym.json");
-    var data = cur ? JSON.parse(decode(cur.content)) : {};
-    data[isoDate(todayIST())] = !!on;
-    var sorted = {};
-    Object.keys(data).sort().forEach(function (k) { sorted[k] = data[k]; });
-    await put("data/gym.json", JSON.stringify(sorted, null, 2) + "\n",
-      "Gym " + isoDate(todayIST()) + " " + (on ? "yes" : "no"),
-      cur ? cur.sha : null);
+    gymSha = cur ? cur.sha : null;
+    gymData = cur ? JSON.parse(decode(cur.content)) : {};
+    return gymData;
+  }
+
+  async function setGym(on) {
+    if (gymData === null) await loadGym();
+    var day = isoDate(todayIST());
+
+    async function attempt() {
+      var next = Object.assign({}, gymData);
+      next[day] = !!on;
+      var sorted = {};
+      Object.keys(next).sort().forEach(function (k) { sorted[k] = next[k]; });
+      var sha = await put("data/gym.json", JSON.stringify(sorted, null, 2) + "\n",
+        "Gym " + day + " " + (on ? "yes" : "no"), gymSha);
+      gymSha = sha;
+      gymData = sorted;
+    }
+
+    try {
+      await attempt();
+    } catch (e) {
+      if (e && (e.message === "409" || e.message === "422")) {
+        await loadGym();          // someone else moved it; take their version
+        await attempt();          // and apply this change on top
+      } else {
+        throw e;
+      }
+    }
   }
 
   async function getGym() {
-    var cur = await gh("data/gym.json");
-    if (!cur) return false;
-    return !!JSON.parse(decode(cur.content))[isoDate(todayIST())];
+    var data = await loadGym();
+    return !!data[isoDate(todayIST())];
   }
 
   /* Auto-unlock: the password is accepted the moment it is fully typed, with no
@@ -126,6 +156,7 @@ window.SW = (function () {
   return {
     unlock: unlock, autoUnlock: autoUnlock, gh: gh, put: put, decode: decode,
     setGym: setGym, getGym: getGym, todayIST: todayIST, isoDate: isoDate,
+    loadGym: loadGym,
     setToken: function (t) {
       token = t;
       try { localStorage.setItem("shaan.wiki:token", t); } catch (e) {}
