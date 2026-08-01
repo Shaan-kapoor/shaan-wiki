@@ -242,7 +242,8 @@ def grid(marks, today, kind=""):
     # Mon and Fri only. Enough to orient a column without labelling all seven.
     labels = '<span class="mon">Mon</span><span class="fri">Fri</span>'
     return ('<div class="gridrow"><div class="wd">%s</div>'
-            '<div class="year">%s</div></div>' % (labels, "".join(cells)))
+            '<div class="year" data-kind="%s">%s</div></div>'
+            % (labels, kind, "".join(cells)))
 
 
 def streaks(marks, today):
