@@ -39,13 +39,18 @@
     t.style.height = t.scrollHeight + "px";
   }
 
+  /* Autosave says nothing. It is a state, not an event, and it is a state that
+     effectively never fails, so announcing it every few seconds was the
+     interface talking about itself while you were trying to think. The line is
+     kept for the two things worth interrupting for: publishing, and failing. */
   function saveDraft() {
     try {
       localStorage.setItem(DRAFT, JSON.stringify({
         t: $("title").value, b: $("body").value
       }));
-      say("saved");
-    } catch (e) {}
+    } catch (e) {
+      say("draft not saved", true);
+    }
   }
 
   function slugify(s) {
