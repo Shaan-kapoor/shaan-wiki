@@ -150,9 +150,16 @@ def markdown(text, wikilinks=None, known=None):
             out.append("<h%d>%s</h%d>" % (
                 lvl, inline_md(line.lstrip("#").strip(), wikilinks, known), lvl))
         elif line.startswith("> "):
+            # Consecutive quoted lines are one quotation. Pasted quotes arrive
+            # hard wrapped, and a wrap is not a new quote.
             flush_para(); flush_list()
+            buf = []
+            while i < len(lines) and lines[i].rstrip().startswith("> "):
+                buf.append(lines[i].rstrip()[2:])
+                i += 1
+            i -= 1
             out.append("<blockquote>%s</blockquote>"
-                       % inline_md(line[2:], wikilinks, known))
+                       % " ".join(inline_md(b, wikilinks, known) for b in buf))
         elif re.match(r"^[-*] ", line):
             flush_para()
             listtag = "ul"

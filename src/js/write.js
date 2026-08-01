@@ -136,15 +136,37 @@
     if (e.key === "Enter") { e.preventDefault(); $("body").focus(); }
   });
 
+  /* The date is fixed when the page loads, so a tab left open across midnight
+     still believes it is yesterday. Publishing then would overwrite yesterday's
+     entry with today's writing. Instead the entry moves to the new day: the
+     previous one is never touched. */
+  async function rollover() {
+    var now = SW.isoDate(SW.todayIST());
+    if (now === DATE) return false;
+    var wasDraft = DRAFT;
+    DATE = now;
+    PATH = "entries/" + DATE + ".md";
+    DRAFT = "shaan.wiki:draft:" + DATE;
+    try {
+      var carried = localStorage.getItem(wasDraft);
+      if (carried) { localStorage.setItem(DRAFT, carried); }
+      localStorage.removeItem(wasDraft);
+    } catch (e) {}
+    var cur = await SW.gh(PATH);      // today may already have something
+    sha = cur ? cur.sha : null;
+    return true;
+  }
+
   $("pub").addEventListener("click", async function () {
     if (!$("body").value.trim()) return;
     $("pub").disabled = true;
     say("publishing", true);
     try {
+      var moved = await rollover();
       sha = await SW.put(PATH, compose(),
         (sha ? "Edit" : "Write") + " " + DATE, sha);
       try { localStorage.removeItem(DRAFT); } catch (e) {}
-      say("published");
+      say(moved ? "published, " + DATE : "published", moved);
     } catch (err) {
       say("failed", true);
     }
