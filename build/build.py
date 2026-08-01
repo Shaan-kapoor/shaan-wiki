@@ -209,7 +209,7 @@ def write(relpath, content):
 
 
 # --- the grid ----------------------------------------------------------------
-def grid(marks, today):
+def grid(marks, today, kind=""):
     """A year as 53 columns of 7 days.
 
     CSS Grid, emitted in column-major order so grid-auto-flow:column lays it
@@ -230,7 +230,10 @@ def grid(marks, today):
             if cd < DAY_ONE or cd > LAST_DAY:
                 cells.append("<i></i>")
             elif cd == today:
-                cells.append('<i class="%s t"></i>' % ("y" if cd in marks else "n"))
+                # tagged so the page can light it the moment you tap, rather
+                # than waiting for a rebuild to bake it in
+                cells.append('<i class="%s t" data-today></i>'
+                             % ("y" if cd in marks else "n"))
             elif cd > today:
                 cells.append("<i></i>")
             else:
@@ -339,8 +342,8 @@ def main():
     base.update({
         "gym_streak": str(gcur), "gym_longest": str(glong),
         "write_streak": str(wcur), "write_longest": str(wlong),
-        "gym_grid": grid(gym_days, today),
-        "write_grid": grid(written, today),
+        "gym_grid": grid(gym_days, today, "gym"),
+        "write_grid": grid(written, today, "writing"),
     })
 
     pages = os.path.join(SRC, "pages")
